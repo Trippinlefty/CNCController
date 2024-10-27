@@ -8,4 +8,17 @@
         <RootNamespace>CNCController</RootNamespace>
     </PropertyGroup>
 
+    <ItemGroup>
+      <Folder Include="ViewModels\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\CNCController.Core\CNCController.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="GitHub.Actions.Core" Version="0.0.2" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0-rc.2.24473.5" />
+    </ItemGroup>
+
 </Project>

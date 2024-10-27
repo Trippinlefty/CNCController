@@ -1,6 +1,12 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CNCController", "CNCController\CNCController.csproj", "{0620CDE3-1F09-448A-805E-316B8D23A8C0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CNCController.WPF", "CNCController.WPF\CNCController.WPF.csproj", "{0620CDE3-1F09-448A-805E-316B8D23A8C0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CNCController.Core", "CNCController.Core\CNCController.Core.csproj", "{0F83FB9D-122C-41CF-A0F7-0B64C286CEB0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CNCController.Tests", "CNCController.Tests\CNCController.Tests.csproj", "{D890D730-A848-47B0-AC24-2611C49B326D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CNCController.Modules", "CNCController.Modules\CNCController.Modules.csproj", "{FED609EA-C7D1-42B1-9510-EC32C9F0DA7C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -12,5 +18,17 @@ Global
 		{0620CDE3-1F09-448A-805E-316B8D23A8C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0620CDE3-1F09-448A-805E-316B8D23A8C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0620CDE3-1F09-448A-805E-316B8D23A8C0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F83FB9D-122C-41CF-A0F7-0B64C286CEB0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F83FB9D-122C-41CF-A0F7-0B64C286CEB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F83FB9D-122C-41CF-A0F7-0B64C286CEB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F83FB9D-122C-41CF-A0F7-0B64C286CEB0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D890D730-A848-47B0-AC24-2611C49B326D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D890D730-A848-47B0-AC24-2611C49B326D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D890D730-A848-47B0-AC24-2611C49B326D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D890D730-A848-47B0-AC24-2611C49B326D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FED609EA-C7D1-42B1-9510-EC32C9F0DA7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FED609EA-C7D1-42B1-9510-EC32C9F0DA7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FED609EA-C7D1-42B1-9510-EC32C9F0DA7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FED609EA-C7D1-42B1-9510-EC32C9F0DA7C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
