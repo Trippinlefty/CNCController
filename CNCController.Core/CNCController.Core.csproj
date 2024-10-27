@@ -1,25 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>WinExe</OutputType>
         <TargetFramework>net7.0-windows</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <UseWPF>true</UseWPF>
-        <RootNamespace>CNCController</RootNamespace>
     </PropertyGroup>
-
-    <ItemGroup>
-      <Folder Include="ViewModels\" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\CNCController.Core\CNCController.Core.csproj" />
-    </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="GitHub.Actions.Core" Version="0.0.2" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0-rc.2.24473.5" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0-rc.2.24473.5" />
+      <PackageReference Include="System.IO.Ports" Version="7.0.0" />
     </ItemGroup>
 
 </Project>
