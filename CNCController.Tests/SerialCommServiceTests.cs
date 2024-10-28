@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using CNCController.Core.Services.SerialCommunication;
+﻿using CNCController.Core.Services.SerialCommunication;
 using Moq;
 using Xunit;
 using Assert = Xunit.Assert;
@@ -18,10 +16,12 @@ public class SerialCommServiceTests
     public async Task ConnectAsync_ShouldReturnTrue_WhenConnectionIsSuccessful()
     {
         // Arrange
-        _mockSerialCommService.Setup(s => s.ConnectAsync("COM1", 115200)).ReturnsAsync(true);
+        var cancellationToken = new CancellationTokenSource().Token;
+        _mockSerialCommService.Setup(s => s.ConnectAsync("COM1", 115200, cancellationToken))
+            .ReturnsAsync(true);
 
         // Act
-        var result = await _mockSerialCommService.Object.ConnectAsync("COM1", 115200);
+        var result = await _mockSerialCommService.Object.ConnectAsync("COM1", 115200, cancellationToken);
 
         // Assert
         Assert.True(result);
@@ -31,14 +31,15 @@ public class SerialCommServiceTests
     public async Task SendCommandAsync_ShouldInvokeSend_WhenCommandIsValid()
     {
         // Arrange
-        _mockSerialCommService.Setup(s => s.SendCommandAsync(It.IsAny<string>(), It.IsAny<int>()))
+        var cancellationToken = new CancellationTokenSource().Token;
+        _mockSerialCommService.Setup(s => s.SendCommandAsync("G28", cancellationToken))
             .ReturnsAsync(true);
 
         // Act
-        var result = await _mockSerialCommService.Object.SendCommandAsync("G28", 2000);
+        var result = await _mockSerialCommService.Object.SendCommandAsync("G28", cancellationToken);
 
         // Assert
-        _mockSerialCommService.Verify(s => s.SendCommandAsync("G28", 2000), Times.Once);
+        _mockSerialCommService.Verify(s => s.SendCommandAsync("G28", cancellationToken), Times.Once);
         Assert.True(result);
     }
 }

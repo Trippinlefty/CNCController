@@ -1,13 +1,19 @@
-﻿using CNCController.Core.Services.CNCControl;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 
-public interface ICNCController
+namespace CNCController.Core.Services.CNCControl
 {
-    Task JogAsync(string direction, double distance);
-    Task HomeAsync();
-    Task ChangeToolAsync(int toolNumber);
-    Task EmergencyStopAsync();
-    CNCStatus GetCurrentStatus();
+    public interface ICNCController
+    {
+        Task JogAsync(string direction, double distance, CancellationToken cancellationToken);
+        Task HomeAsync(CancellationToken cancellationToken);
+        Task ChangeToolAsync(int toolNumber, CancellationToken cancellationToken);
+        Task EmergencyStopAsync(CancellationToken cancellationToken);
+        
+        CNCStatus GetCurrentStatus();
 
-    event EventHandler<CNCStatus>? StatusUpdated;  // Event to update CNC status
-    event EventHandler<string>? ErrorOccurred;     // Event to notify errors
+        event EventHandler<CNCStatus>? StatusUpdated;  // Event to update CNC status
+        event EventHandler<string>? ErrorOccurred;     // Event to notify errors
+    }
 }

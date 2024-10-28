@@ -1,5 +1,8 @@
-﻿using System.IO.Ports;
+﻿using System;
+using System.IO.Ports;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace CNCController.Core.Services.SerialCommunication
 {
@@ -21,22 +24,22 @@ namespace CNCController.Core.Services.SerialCommunication
             _receiveBuffer = new StringBuilder();
         }
 
-        public async Task<bool> ConnectAsync(string portName, int baudRate)
+        public async Task<bool> ConnectAsync(string portName, int baudRate, CancellationToken cancellationToken)
         {
             try
             {
                 _serialPort = new SerialPort(portName, baudRate)
                 {
-                    ReadTimeout = 500, // Set read timeout to prevent blocking
-                    WriteTimeout = 500, // Set write timeout
-                    DtrEnable = true, // Enable Data Terminal Ready signal
-                    RtsEnable = true // Enable Request to Send signal
+                    ReadTimeout = 500,
+                    WriteTimeout = 500,
+                    DtrEnable = true,
+                    RtsEnable = true
                 };
 
                 _serialPort.DataReceived += OnDataReceived;
                 _serialPort.Open();
 
-                ConnectionOpened?.Invoke(this, EventArgs.Empty); // Fire connection opened event
+                ConnectionOpened?.Invoke(this, EventArgs.Empty);
                 return true;
             }
             catch (Exception ex)
@@ -46,31 +49,24 @@ namespace CNCController.Core.Services.SerialCommunication
             }
         }
 
-        public Task DisconnectAsync()
-        {
-            if (_serialPort?.IsOpen ?? false)
-            {
-                _serialPort.Close();
-                ConnectionClosed?.Invoke(this, EventArgs.Empty); // Fire connection closed event
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public async Task<bool> SendCommandAsync(string command, int timeout = 2000)
+        public async Task<bool> SendCommandAsync(string command, CancellationToken cancellationToken)
         {
             if (!IsConnected) return false;
 
             try
             {
-                lock (_lock)
-                {
-                    _serialPort?.WriteLine(command); // Send the command
-                }
+                byte[] buffer = Encoding.ASCII.GetBytes(command + "\r\n");
+                
+                await _serialPort.BaseStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken);
 
-                // Wait for an acknowledgment or response
-                var response = await WaitForResponseAsync(timeout);
+                // Wait for acknowledgment or response
+                var response = await WaitForResponseAsync(cancellationToken);
                 return !string.IsNullOrEmpty(response);
+            }
+            catch (OperationCanceledException)
+            {
+                ErrorOccurred?.Invoke(this, "Command sending canceled.");
+                return false;
             }
             catch (Exception ex)
             {
@@ -79,28 +75,25 @@ namespace CNCController.Core.Services.SerialCommunication
             }
         }
 
-        private async Task<string> WaitForResponseAsync(int timeout)
+        private async Task<string> WaitForResponseAsync(CancellationToken cancellationToken)
         {
-            var cts = new CancellationTokenSource(timeout);
             try
             {
-                while (!cts.Token.IsCancellationRequested)
+                while (!cancellationToken.IsCancellationRequested)
                 {
                     if (_receiveBuffer.Length > 0)
                     {
-                        var response = _receiveBuffer.ToString();
+                        string response = _receiveBuffer.ToString();
                         _receiveBuffer.Clear();
                         return response;
                     }
-
-                    await Task.Delay(100, cts.Token); // Wait a bit before checking again
+                    await Task.Delay(100, cancellationToken);
                 }
             }
             catch (OperationCanceledException)
             {
-                ErrorOccurred?.Invoke(this, "Response timeout");
+                ErrorOccurred?.Invoke(this, "Response waiting canceled.");
             }
-
             return string.Empty;
         }
 
@@ -112,15 +105,25 @@ namespace CNCController.Core.Services.SerialCommunication
 
                 lock (_lock)
                 {
-                    string data = _serialPort.ReadExisting(); // Read all available data
-                    _receiveBuffer.Append(data); // Buffer the incoming data
-                    DataReceived?.Invoke(this, data); // Fire data received event
+                    string data = _serialPort.ReadExisting();
+                    _receiveBuffer.Append(data);
+                    DataReceived?.Invoke(this, data);
                 }
             }
             catch (Exception ex)
             {
                 ErrorOccurred?.Invoke(this, $"Read error: {ex.Message}");
             }
+        }
+        
+        public Task DisconnectAsync()
+        {
+            if (_serialPort?.IsOpen ?? false)
+            {
+                _serialPort.Close();
+                ConnectionClosed?.Invoke(this, EventArgs.Empty);
+            }
+            return Task.CompletedTask;
         }
     }
 }
