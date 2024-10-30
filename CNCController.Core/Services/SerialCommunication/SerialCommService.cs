@@ -26,6 +26,7 @@ namespace CNCController.Core.Services.SerialCommunication
 
         public async Task<bool> ConnectAsync(string portName, int baudRate, CancellationToken cancellationToken)
         {
+            Console.WriteLine($"Connecting to {portName} at {baudRate}");
             try
             {
                 _serialPort = new SerialPort(portName, baudRate)

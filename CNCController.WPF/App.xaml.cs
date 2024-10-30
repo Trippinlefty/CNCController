@@ -37,7 +37,9 @@ namespace CNCController
             await InitializeServicesAsync(_cancellationTokenSource.Token);
 
             // Start the main window
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            var viewModel = _serviceProvider.GetRequiredService<CNCViewModel>();
+            viewModel.RefreshAvailablePorts();
+            var mainWindow = new MainWindow(viewModel);
             mainWindow.Show();
         }
 
@@ -46,6 +48,7 @@ namespace CNCController
             services.AddSingleton<IConfigurationService, ConfigurationService>();
             services.AddSingleton<ISerialCommService, SerialCommService>();
             services.AddSingleton<ICNCController, CNCController.Core.Services.CNCControl.CNCController>();
+            services.AddSingleton<CNCViewModel>();  // Add CNCViewModel
             services.AddSingleton<MainWindow>();
         }
         
@@ -59,7 +62,7 @@ namespace CNCController
 
                 // Resolve and configure Serial Communication Service
                 var serialCommService = _serviceProvider.GetRequiredService<ISerialCommService>();
-                await serialCommService.ConnectAsync(config.PortName, config.BaudRate, cancellationToken);
+                //await serialCommService.ConnectAsync(config.PortName, config.BaudRate, cancellationToken);
 
                 // CNC Controller is managed by DI
             }
