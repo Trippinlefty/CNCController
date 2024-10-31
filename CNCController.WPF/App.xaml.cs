@@ -5,7 +5,9 @@ using System.Windows;
 using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.Configuration;
 using CNCController.Core.Services.SerialCommunication;
+using CNCController.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CNCController
 {
@@ -45,10 +47,11 @@ namespace CNCController
 
         private void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<IConfigurationService, ConfigurationService>();
+            services.AddLogging(configure => configure.AddConsole());
+            services.AddSingleton<IConfigurationService, ConfigurationService>(); // Add this line
             services.AddSingleton<ISerialCommService, SerialCommService>();
             services.AddSingleton<ICNCController, CNCController.Core.Services.CNCControl.CNCController>();
-            services.AddSingleton<CNCViewModel>();  // Add CNCViewModel
+            services.AddSingleton<CNCViewModel>();
             services.AddSingleton<MainWindow>();
         }
         

@@ -1,8 +1,6 @@
-﻿using System;
-using System.IO.Ports;
+﻿using System.IO.Ports;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace CNCController.Core.Services.SerialCommunication
 {
@@ -15,39 +13,67 @@ namespace CNCController.Core.Services.SerialCommunication
 
         private SerialPort? _serialPort;
         private StringBuilder _receiveBuffer;
-        private readonly object _lock = new(); // To synchronize access to the port
+        private readonly ILogger<SerialCommService> _logger;
+        private readonly object _lock = new();
 
         public bool IsConnected => _serialPort?.IsOpen ?? false;
 
-        public SerialCommService()
+        public SerialCommService(ILogger<SerialCommService> logger)
         {
             _receiveBuffer = new StringBuilder();
+            _logger = logger;
+            _logger.LogInformation("SerialCommService initialized.");
         }
 
         public async Task<bool> ConnectAsync(string portName, int baudRate, CancellationToken cancellationToken)
         {
-            Console.WriteLine($"Connecting to {portName} at {baudRate}");
-            try
+            const int maxRetryAttempts = 3;
+            const int initialDelay = 500; // in milliseconds
+            int retryAttempt = 0;
+
+            while (retryAttempt < maxRetryAttempts)
             {
-                _serialPort = new SerialPort(portName, baudRate)
+                try
                 {
-                    ReadTimeout = 500,
-                    WriteTimeout = 500,
-                    DtrEnable = true,
-                    RtsEnable = true
-                };
+                    _logger.LogInformation("Attempting to connect to {PortName} at {BaudRate}. Retry {RetryAttempt}", portName, baudRate, retryAttempt + 1);
+                    _serialPort = new SerialPort(portName, baudRate)
+                    {
+                        ReadTimeout = 500,
+                        WriteTimeout = 500,
+                        DtrEnable = true,
+                        RtsEnable = true
+                    };
 
-                _serialPort.DataReceived += OnDataReceived;
-                _serialPort.Open();
+                    _serialPort.DataReceived += OnDataReceived;
+                    _serialPort.Open();
+                    ConnectionOpened?.Invoke(this, EventArgs.Empty);
+                    _logger.LogInformation("Successfully connected to {PortName}.", portName);
 
-                ConnectionOpened?.Invoke(this, EventArgs.Empty);
-                return true;
+                    return true;
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    ErrorOccurred?.Invoke(this, "Access to the port is denied. Please check permissions.");
+                    _logger.LogError(ex, "Access error while connecting to port {PortName}", portName);
+                    break;
+                }
+                catch (IOException ex)
+                {
+                    ErrorOccurred?.Invoke(this, "I/O error occurred. Check port connection or cable.");
+                    _logger.LogError(ex, "I/O error while connecting to port {PortName}", portName);
+                }
+                catch (Exception ex)
+                {
+                    ErrorOccurred?.Invoke(this, $"Unexpected error: {ex.Message}");
+                    _logger.LogError(ex, "Unexpected error while connecting to port {PortName}", portName);
+                }
+
+                await Task.Delay(initialDelay * (int)Math.Pow(2, retryAttempt), cancellationToken);
+                retryAttempt++;
             }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke(this, $"Connection error: {ex.Message}");
-                return false;
-            }
+
+            _logger.LogWarning("Connection failed after {RetryAttempt} attempts.", retryAttempt);
+            return false;
         }
 
         public async Task<bool> SendCommandAsync(string command, CancellationToken cancellationToken)
@@ -60,7 +86,6 @@ namespace CNCController.Core.Services.SerialCommunication
                 
                 await _serialPort.BaseStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken);
 
-                // Wait for acknowledgment or response
                 var response = await WaitForResponseAsync(cancellationToken);
                 return !string.IsNullOrEmpty(response);
             }
@@ -117,14 +142,23 @@ namespace CNCController.Core.Services.SerialCommunication
             }
         }
         
-        public Task DisconnectAsync()
+        public async Task DisconnectAsync()
         {
             if (_serialPort?.IsOpen ?? false)
             {
-                _serialPort.Close();
-                ConnectionClosed?.Invoke(this, EventArgs.Empty);
+                try
+                {
+                    _logger.LogInformation("Attempting to disconnect from {PortName}.", _serialPort.PortName);
+                    _serialPort.Close();
+                    ConnectionClosed?.Invoke(this, EventArgs.Empty);
+                    _logger.LogInformation("Successfully disconnected.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred during disconnection.");
+                    ErrorOccurred?.Invoke(this, "Failed to disconnect.");
+                }
             }
-            return Task.CompletedTask;
         }
     }
 }

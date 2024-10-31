@@ -8,67 +8,74 @@ using System.Windows.Input;
 using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.RelayCommand;
 using CNCController.Core.Services.SerialCommunication;
+using Microsoft.Extensions.Logging;
+
+namespace CNCController.ViewModels;
 
 public class CNCViewModel : INotifyPropertyChanged
 {
-    private readonly ICNCController _cncController;
+    private readonly ILogger<CNCViewModel> _logger;
+    private readonly ICNCController? _cncController;
     private readonly ISerialCommService _serialCommService;
     private CNCStatus _currentStatus;
 
-    public CNCViewModel(ICNCController cncController, ISerialCommService serialCommService)
+    public CNCViewModel(ICNCController? cncController, ISerialCommService serialCommService,
+        ILogger<CNCViewModel> logger)
     {
         _cncController = cncController;
         _serialCommService = serialCommService;
-        
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _currentStatus = new CNCStatus();
+
+        _serialCommService.ErrorOccurred += (sender, message) =>
+        {
+            ErrorMessage = message;
+            _logger.LogWarning("Error occurred: {Message}", message);
+        };
+
+        _logger.LogInformation("CNCViewModel initialized.");
         RefreshAvailablePorts();
 
         // Initialize commands
         JogCommand = new RelayCommand(
-            execute: param => ExecuteJogCommand(param),
-            canExecute: param => CanExecuteJogCommand(param)
+            execute: ExecuteJogCommand,
+            canExecute: CanExecuteJogCommand
         );
         HomeCommand = new RelayCommand(
             execute: _ => ExecuteHomeCommand(),
             canExecute: _ => CanExecuteHomeCommand()
         );
-        ConnectCommand = new RelayCommand(
-            execute: async param => await ExecuteConnectCommand(),
-            canExecute: param => CanExecuteConnectCommand()
-        );
-        DisconnectCommand = new RelayCommand(
-            execute: async param => await ExecuteDisconnectCommand(),
-            canExecute: param => CanExecuteDisconnectCommand()
-        );
+        
+        ConnectCommand = new AsyncRelayCommand(async () => await ExecuteConnectCommand(), CanExecuteConnectCommand);
+        DisconnectCommand = new AsyncRelayCommand(async () => await ExecuteDisconnectCommand(), CanExecuteDisconnectCommand);
     }
 
     private string _portName;
+
     public string PortName
     {
         get => _portName;
         set
         {
-            if (_portName != value)
-            {
-                _portName = value;
-                Console.WriteLine($"PortName set to: {_portName}");
-                //OnPropertyChanged(nameof(PortName));
-            }
+            if (_portName == value) return;
+            _portName = value;
+            Console.WriteLine($"PortName set to: {_portName}");
+            //OnPropertyChanged(nameof(PortName));
         }
     }
 
     private int _baudRate;
     private bool _isConnecting = false;
+
     public int BaudRate
     {
         get => _baudRate;
         set
         {
-            if (_baudRate != value)
-            {
-                _baudRate = value;
-                Console.WriteLine($"BaudRate set to: {_baudRate}");
-                //OnPropertyChanged(nameof(BaudRate));
-            }
+            if (_baudRate == value) return;
+            _baudRate = value;
+            Console.WriteLine($"BaudRate set to: {_baudRate}");
+            //OnPropertyChanged(nameof(BaudRate));
         }
     }
 
@@ -81,7 +88,19 @@ public class CNCViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(CurrentStatus));
         }
     }
-    
+
+    private string _errorMessage;
+
+    public string ErrorMessage
+    {
+        get => _errorMessage;
+        set
+        {
+            _errorMessage = value;
+            OnPropertyChanged(nameof(ErrorMessage));
+        }
+    }
+
     public ObservableCollection<string> AvailablePorts { get; private set; }
 
     // Commands for UI actions
@@ -100,35 +119,60 @@ public class CNCViewModel : INotifyPropertyChanged
     // Connection command execution
     private async Task ExecuteConnectCommand()
     {
-        if (_isConnecting) return; // Prevent re-entry
+        _logger.LogInformation("Attempting to connect...");
+        if (_isConnecting) return;
         _isConnecting = true;
-        
+
         try
         {
             if (await _serialCommService.ConnectAsync(PortName, BaudRate, CancellationToken.None))
             {
                 UpdateStatus("Connected");
+                _logger.LogInformation("Connected to CNC.");
             }
             else
             {
                 UpdateStatus("Failed to connect");
+                _logger.LogWarning("Connection failed.");
             }
         }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            UpdateStatus("Failed to connect"); // Set the status on exception
+            _logger.LogError(ex, "Connection error");
+        }
         finally
-        { 
+        {
             _isConnecting = false;
-            ((RelayCommand)ConnectCommand).RaiseCanExecuteChanged();
-            ((RelayCommand)DisconnectCommand).RaiseCanExecuteChanged();
-        } 
+            (ConnectCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (DisconnectCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        }
     }
-
-    private bool CanExecuteConnectCommand() => !_serialCommService.IsConnected;
 
     private async Task ExecuteDisconnectCommand()
     {
-        await _serialCommService.DisconnectAsync();
-        UpdateStatus("Disconnected");
+        _logger.LogInformation("Disconnecting from CNC...");
+
+        try
+        {
+            await _serialCommService.DisconnectAsync();
+            UpdateStatus("Disconnected");
+            _logger.LogInformation("Disconnected successfully.");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            _logger.LogError(ex, "Disconnection error");
+        }
+        finally
+        {
+            (ConnectCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (DisconnectCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        }
     }
+
+    private bool CanExecuteConnectCommand() => !_serialCommService.IsConnected;
 
     private bool CanExecuteDisconnectCommand() => _serialCommService.IsConnected;
 
@@ -137,27 +181,31 @@ public class CNCViewModel : INotifyPropertyChanged
     {
         _cncController.JogAsync("X", 10, new CancellationTokenSource().Token).Wait();
         UpdateStatus("Jogging...");
+        _logger.LogWarning("Jogging...");
     }
 
-    private bool CanExecuteJogCommand(object param) => true;
+    private static bool CanExecuteJogCommand(object param) => true;
 
     private void ExecuteHomeCommand()
     {
-        _cncController.HomeAsync(new CancellationTokenSource().Token).Wait();
+        _cncController?.HomeAsync(new CancellationTokenSource().Token).Wait();
         UpdateStatus("Homing...");
+        _logger.LogWarning("Homing...");
     }
 
-    private bool CanExecuteHomeCommand() => true;
+    private static bool CanExecuteHomeCommand() => true;
 
     private void UpdateStatus(string message)
     {
         CurrentStatus = new CNCStatus { StateMessage = message };
+        _logger.LogWarning("Status Updated.");
     }
-    
+
     public void RefreshAvailablePorts()
     {
         var ports = SerialPort.GetPortNames();
         AvailablePorts = new ObservableCollection<string>(ports);
         OnPropertyChanged(nameof(AvailablePorts));
+        _logger.LogWarning("Available Ports Refreshed.");
     }
 }

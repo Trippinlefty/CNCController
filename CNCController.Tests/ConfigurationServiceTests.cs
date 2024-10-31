@@ -1,8 +1,8 @@
-﻿using System.IO;
-using System.Threading.Tasks;
-using CNCController.Core.Services.Configuration;
+﻿using CNCController.Core.Services.Configuration;
 using Xunit;
 using Assert = Xunit.Assert;
+
+namespace CNCController.Tests;
 
 public class ConfigurationServiceTests
 {

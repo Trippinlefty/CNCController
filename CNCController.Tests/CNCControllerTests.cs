@@ -1,24 +1,23 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-using CNCController.Core.Services.CNCControl;
+﻿using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.Configuration;
 using CNCController.Core.Services.SerialCommunication;
 using Moq;
 using Xunit;
 using Assert = Xunit.Assert;
 
-public class CNCControllerTests
+namespace CNCController.Tests;
+
+public class CncControllerTests
 {
     private readonly Mock<ISerialCommService> _mockSerialCommService;
-    private readonly Mock<IConfigurationService> _mockConfigService;
     private readonly ICNCController _cncController;
 
-    public CNCControllerTests()
+    public CncControllerTests()
     {
         _mockSerialCommService = new Mock<ISerialCommService>();
-        _mockConfigService = new Mock<IConfigurationService>();
+        Mock<IConfigurationService> mockConfigService = new();
 
-        _cncController = new CNCController.Core.Services.CNCControl.CNCController(_mockSerialCommService.Object, _mockConfigService.Object);
+        _cncController = new CNCController.Core.Services.CNCControl.CNCController(_mockSerialCommService.Object, mockConfigService.Object);
     }
 
     [Fact]
@@ -60,10 +59,10 @@ public class CNCControllerTests
         var controller = new CNCController.Core.Services.CNCControl.CNCController(mockSerialComm.Object, mockConfigService.Object);
         var stateChanged = false;
     
-        controller.StatusUpdated += (sender, status) => stateChanged = true;
+        controller.StatusUpdated += (_, _) => stateChanged = true;
 
         // Act
-        controller.JogAsync("X", 10, new CancellationToken()).Wait();
+        controller.JogAsync("X", 10, new CancellationToken())?.Wait();
 
         // Assert
         Assert.True(stateChanged);
