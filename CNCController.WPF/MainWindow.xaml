@@ -26,6 +26,7 @@
                     Width="80" 
                     Margin="5,0" 
                     Command="{Binding ConnectCommand}"/>
+            <Button Command="{Binding SaveSettingsCommand}" Content="Save Settings" />
         </StackPanel>
 
         <!-- G-Code Execution Area -->

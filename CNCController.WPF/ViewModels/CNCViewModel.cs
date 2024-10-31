@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using CNCController.Core.Services.CNCControl;
+using CNCController.Core.Services.Configuration;
 using CNCController.Core.Services.RelayCommand;
 using CNCController.Core.Services.SerialCommunication;
 using Microsoft.Extensions.Logging;
@@ -17,15 +18,17 @@ public class CNCViewModel : INotifyPropertyChanged
     private readonly ILogger<CNCViewModel> _logger;
     private readonly ICNCController? _cncController;
     private readonly ISerialCommService _serialCommService;
+    private readonly IConfigurationService _configService;
     private CNCStatus _currentStatus;
 
     public CNCViewModel(ICNCController? cncController, ISerialCommService serialCommService,
-        ILogger<CNCViewModel> logger)
+        ILogger<CNCViewModel> logger, IConfigurationService configService)
     {
+        _configService = configService;
         _cncController = cncController;
         _serialCommService = serialCommService;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _currentStatus = new CNCStatus();
+        _currentStatus = new CNCStatus { StateMessage = "Idle" }; // Default state
 
         _serialCommService.ErrorOccurred += (sender, message) =>
         {
@@ -48,6 +51,9 @@ public class CNCViewModel : INotifyPropertyChanged
         
         ConnectCommand = new AsyncRelayCommand(async () => await ExecuteConnectCommand(), CanExecuteConnectCommand);
         DisconnectCommand = new AsyncRelayCommand(async () => await ExecuteDisconnectCommand(), CanExecuteDisconnectCommand);
+        SaveSettingsCommand = new RelayCommand(async _ => await SaveSettingsAsync());
+
+        InitializeSettingsAsync();
     }
 
     private string _portName;
@@ -60,7 +66,7 @@ public class CNCViewModel : INotifyPropertyChanged
             if (_portName == value) return;
             _portName = value;
             Console.WriteLine($"PortName set to: {_portName}");
-            //OnPropertyChanged(nameof(PortName));
+            OnPropertyChanged(nameof(PortName));
         }
     }
 
@@ -75,7 +81,7 @@ public class CNCViewModel : INotifyPropertyChanged
             if (_baudRate == value) return;
             _baudRate = value;
             Console.WriteLine($"BaudRate set to: {_baudRate}");
-            //OnPropertyChanged(nameof(BaudRate));
+            OnPropertyChanged(nameof(BaudRate));
         }
     }
 
@@ -100,6 +106,28 @@ public class CNCViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(ErrorMessage));
         }
     }
+    
+    private int _pollingInterval;
+    public int PollingInterval
+    {
+        get => _pollingInterval;
+        set
+        {
+            _pollingInterval = value;
+            OnPropertyChanged(nameof(PollingInterval));
+        }
+    }
+    
+    private string _statusMessage;
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        set
+        {
+            _statusMessage = value;
+            OnPropertyChanged(nameof(StatusMessage));
+        }
+    }
 
     public ObservableCollection<string> AvailablePorts { get; private set; }
 
@@ -108,8 +136,18 @@ public class CNCViewModel : INotifyPropertyChanged
     public ICommand HomeCommand { get; }
     public ICommand ConnectCommand { get; }
     public ICommand DisconnectCommand { get; }
+    public ICommand SaveSettingsCommand { get; }
 
     public event PropertyChangedEventHandler PropertyChanged;
+    
+    private async Task InitializeSettingsAsync()
+    {
+        var config = await _configService.LoadConfigAsync();
+        PortName = config.PortName;
+        BaudRate = config.BaudRate;
+        PollingInterval = config.PollingInterval;
+        // load other machine settings if necessary
+    }
 
     protected virtual void OnPropertyChanged(string propertyName)
     {
@@ -138,9 +176,7 @@ public class CNCViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
-            UpdateStatus("Failed to connect"); // Set the status on exception
-            _logger.LogError(ex, "Connection error");
+            HandleError("Connection error", ex);
         }
         finally
         {
@@ -162,8 +198,7 @@ public class CNCViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
-            _logger.LogError(ex, "Disconnection error");
+            HandleError("Disconnection error", ex);
         }
         finally
         {
@@ -176,22 +211,35 @@ public class CNCViewModel : INotifyPropertyChanged
 
     private bool CanExecuteDisconnectCommand() => _serialCommService.IsConnected;
 
-    // Jog and Home command execution
     private void ExecuteJogCommand(object param)
     {
-        _cncController.JogAsync("X", 10, new CancellationTokenSource().Token).Wait();
-        UpdateStatus("Jogging...");
-        _logger.LogWarning("Jogging...");
+        try
+        {
+            _cncController?.JogAsync("X", 10, new CancellationTokenSource().Token).Wait();
+            UpdateStatus("Jogging...");
+            _logger.LogInformation("Jogging...");
+        }
+        catch (Exception ex)
+        {
+            HandleError("Jogging error", ex);
+        }
     }
-
-    private static bool CanExecuteJogCommand(object param) => true;
 
     private void ExecuteHomeCommand()
     {
-        _cncController?.HomeAsync(new CancellationTokenSource().Token).Wait();
-        UpdateStatus("Homing...");
-        _logger.LogWarning("Homing...");
+        try
+        {
+            _cncController?.HomeAsync(new CancellationTokenSource().Token).Wait();
+            UpdateStatus("Homing...");
+            _logger.LogInformation("Homing...");
+        }
+        catch (Exception ex)
+        {
+            HandleError("Homing error", ex);
+        }
     }
+
+    private static bool CanExecuteJogCommand(object param) => true;
 
     private static bool CanExecuteHomeCommand() => true;
 
@@ -207,5 +255,28 @@ public class CNCViewModel : INotifyPropertyChanged
         AvailablePorts = new ObservableCollection<string>(ports);
         OnPropertyChanged(nameof(AvailablePorts));
         _logger.LogWarning("Available Ports Refreshed.");
+    }
+    
+    private void HandleError(string message, Exception ex)
+    {
+        ErrorMessage = $"Error: {ex.Message}";
+        _logger.LogError(ex, message);
+        UpdateStatus(ErrorMessage);
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        var success = await _configService.UpdateConfigAsync("PortName", PortName) &&
+                      await _configService.UpdateConfigAsync("BaudRate", BaudRate.ToString()) &&
+                      await _configService.UpdateConfigAsync("PollingInterval", PollingInterval.ToString());
+        Console.WriteLine($"PollingInterval: {_pollingInterval}");
+        if (success)
+        {
+            StatusMessage = "Settings saved successfully.";
+        }
+        else
+        {
+            StatusMessage = "Failed to save settings.";
+        }
     }
 }
