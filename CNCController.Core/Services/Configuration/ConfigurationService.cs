@@ -1,29 +1,22 @@
-﻿using System;
-using System.IO;
-using System.Text.Json;
-using System.Threading.Tasks;
+﻿using System.Text.Json;
 using CNCController.Core.Services.Configuration;
 
 public class ConfigurationService : IConfigurationService
 {
     private const string ConfigFilePath = "config.json";
-    private readonly AppConfig _defaultConfig;
-
-    public ConfigurationService()
+    private readonly AppConfig _defaultConfig = new()
     {
-        // Define default configuration values
-        _defaultConfig = new AppConfig
+        PortName = "COM1",
+        BaudRate = 115200,
+        PollingInterval = 1000,
+        MachineSettings = new Dictionary<string, string>
         {
-            PortName = "COM1",
-            BaudRate = 115200,
-            PollingInterval = 1000,
-            MachineSettings = new Dictionary<string, string>
-            {
-                { "StepsPerMM", "200" },
-                { "MaxSpeed", "5000" }
-            }
-        };
-    }
+            { "StepsPerMM", "200" },
+            { "MaxSpeed", "5000" }
+        }
+    };
+
+    // Define default configuration values
 
     public async Task<AppConfig> LoadConfigAsync()
     {

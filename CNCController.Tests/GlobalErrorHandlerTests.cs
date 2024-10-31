@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
+using static Moq.It;
 
 namespace CNCController.Tests;
 
@@ -21,10 +22,10 @@ public class GlobalErrorHandlerTests
         mockLogger.Verify(
             x => x.Log(
                 LogLevel.Error,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Unhandled Exception")),
+                IsAny<EventId>(),
+                Is<IsAnyType>((v, t) => v.ToString()!.Contains("Unhandled Exception")),
                 exception,
-                It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+                IsAny<Func<IsAnyType, Exception, string>>()),
             Times.Once);
     }
 }
