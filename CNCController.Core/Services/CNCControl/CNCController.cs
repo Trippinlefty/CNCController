@@ -55,6 +55,21 @@ namespace CNCController.Core.Services.CNCControl
             UpdateStatus(CNCState.Idle, "Emergency Stop Activated");
         }
 
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task PauseAsync(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
         public CNCStatus GetCurrentStatus()
         {
             return _currentStatus;

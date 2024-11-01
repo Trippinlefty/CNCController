@@ -10,6 +10,9 @@ namespace CNCController.Core.Services.CNCControl
         Task HomeAsync(CancellationToken cancellationToken);
         Task ChangeToolAsync(int toolNumber, CancellationToken cancellationToken);
         Task EmergencyStopAsync(CancellationToken cancellationToken);
+        Task StartAsync(CancellationToken cancellationToken);
+        Task PauseAsync(CancellationToken cancellationToken);
+        Task StopAsync(CancellationToken cancellationToken);
         
         CNCStatus GetCurrentStatus();
 
