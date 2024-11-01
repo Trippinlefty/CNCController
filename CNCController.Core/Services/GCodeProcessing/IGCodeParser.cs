@@ -2,8 +2,7 @@
 {
     public interface IGCodeParser
     {
-        GCodeModel ParseGCode(string gCodeText);
-        bool ValidateGCode(string gCodeText);
-        GCodeCommandType DetermineCommandType(string commandText);
+        GCodeModel ParseGCode(string gCodeText);     // Parses and validates GCode text into a model
+        bool ValidateGCode(string gCodeText);        // Optionally, allows independent validation if needed
     }
 }
