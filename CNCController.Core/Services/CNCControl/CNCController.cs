@@ -1,13 +1,18 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using CNCController.Core.Exceptions;
 using CNCController.Core.Services.Configuration;
 using CNCController.Core.Services.SerialCommunication;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using CNCController.Core.Services.ErrorHandle;
 
 namespace CNCController.Core.Services.CNCControl
 {
     public class CNCController : ICNCController
     {
+        private readonly ILogger<CNCController> _logger;
+        private readonly IErrorHandler _globalErrorHandler;
         private readonly ISerialCommService _serialCommService;
         private readonly IConfigurationService _configurationService;
         private CNCStatus _currentStatus;
@@ -15,8 +20,11 @@ namespace CNCController.Core.Services.CNCControl
         public event EventHandler<CNCStatus>? StatusUpdated;
         public event EventHandler<string>? ErrorOccurred;
 
-        public CNCController(ISerialCommService serialCommService, IConfigurationService configurationService)
+        public CNCController(ISerialCommService serialCommService, IConfigurationService configurationService, ILogger<CNCController> logger, IErrorHandler globalErrorHandler)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _globalErrorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
+
             _serialCommService = serialCommService;
             _configurationService = configurationService;
             _currentStatus = new CNCStatus();
@@ -27,24 +35,63 @@ namespace CNCController.Core.Services.CNCControl
 
         public async Task JogAsync(string direction, double distance, CancellationToken cancellationToken)
         {
-            string jogCommand = $"G91 G0 {direction}{distance} F100";
-            await SendCommandAsync(jogCommand, cancellationToken);
-            UpdateStatus(CNCState.Idle, "Jogging completed.");
+            try
+            {
+                string jogCommand = $"G91 G0 {direction}{distance} F100";
+                await SendCommandAsync(jogCommand, cancellationToken);
+                UpdateStatus(CNCState.Idle, "Jogging completed.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _globalErrorHandler.HandleException(ex);
+                _logger.LogError(ex, "Jog command failed due to an invalid operation.");
+                throw new CNCOperationException("Jog command failed.", ex);
+            }
+            catch (Exception ex)
+            {
+                _globalErrorHandler.HandleException(ex);
+                _logger.LogError(ex, "Unexpected error during jogging operation.");
+                throw;
+            }
         }
 
         public async Task HomeAsync(CancellationToken cancellationToken)
         {
-            UpdateStatus(CNCState.Running, "Homing");
-            await SendCommandAsync("G28", cancellationToken);
-            UpdateStatus(CNCState.Idle, "Homing completed.");
+            try
+            {
+                UpdateStatus(CNCState.Running, "Homing");
+                await SendCommandAsync("G28", cancellationToken);
+                UpdateStatus(CNCState.Idle, "Homing completed.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _globalErrorHandler.HandleException(ex);
+                _logger.LogError(ex, "Home command failed due to an invalid operation.");
+                throw new CNCOperationException("Home command failed.", ex);
+            }
+            catch (Exception ex)
+            {
+                _globalErrorHandler.HandleException(ex);
+                _logger.LogError(ex, "Unexpected error during homing operation.");
+                throw;
+            }
         }
 
         public async Task ChangeToolAsync(int toolNumber, CancellationToken cancellationToken)
         {
-            UpdateStatus(CNCState.Running, $"Changing tool to T{toolNumber}");
-            string toolChangeCommand = $"T{toolNumber} M6";
-            await SendCommandAsync(toolChangeCommand, cancellationToken);
-            UpdateStatus(CNCState.Idle, $"Tool changed to T{toolNumber}");
+            try
+            {
+                UpdateStatus(CNCState.Running, $"Changing tool to T{toolNumber}");
+                string toolChangeCommand = $"T{toolNumber} M6";
+                await SendCommandAsync(toolChangeCommand, cancellationToken);
+                UpdateStatus(CNCState.Idle, $"Tool changed to T{toolNumber}");
+            }
+            catch (Exception ex)
+            {
+                _globalErrorHandler.HandleException(ex);
+                _logger.LogError(ex, "Error during tool change.");
+                throw;
+            }
         }
 
         public async Task EmergencyStopAsync(CancellationToken cancellationToken)
@@ -92,6 +139,7 @@ namespace CNCController.Core.Services.CNCControl
             catch (Exception ex)
             {
                 ErrorOccurred?.Invoke(this, $"Error in command execution: {ex.Message}");
+                throw;
             }
         }
 

@@ -79,7 +79,7 @@ public class SerialCommServiceTests
             await asyncConnectCommand.ExecuteAsync();
         }
 
-        Assert.Equal("Error: Connection error", viewModel.ErrorMessage);
+        Assert.StartsWith("Error: Connection failed - An unexpected error occurred.", viewModel.ErrorMessage);
     }
 
     [Fact]
@@ -100,7 +100,6 @@ public class SerialCommServiceTests
             await asyncDisconnectCommand.ExecuteAsync();
         }
 
-        Assert.Equal("Error: Disconnection error", viewModel.ErrorMessage);
+        Assert.Contains("An unexpected error occurred.", viewModel.ErrorMessage);
     }
-
 }

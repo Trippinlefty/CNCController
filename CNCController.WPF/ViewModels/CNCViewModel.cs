@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.IO.Ports;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using CNCController.Core.Exceptions;
 using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.Configuration;
 using CNCController.Core.Services.RelayCommand;
@@ -17,6 +19,7 @@ namespace CNCController.ViewModels;
 public class CNCViewModel : INotifyPropertyChanged
 {
     private readonly ILogger<CNCViewModel> _logger;
+    private readonly GlobalErrorHandler _globalErrorHandler;
     private readonly ICNCController? _cncController;
     private readonly ISerialCommService _serialCommService;
     private readonly IConfigurationService _configService;
@@ -29,6 +32,7 @@ public class CNCViewModel : INotifyPropertyChanged
         _serialCommService = serialCommService ?? throw new ArgumentNullException(nameof(serialCommService));
         _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _globalErrorHandler = new GlobalErrorHandler(logger);
 
         _currentStatus = new CNCStatus { StateMessage = "Idle" } ?? throw new ArgumentNullException(nameof(_currentStatus)); 
 
@@ -150,32 +154,15 @@ public class CNCViewModel : INotifyPropertyChanged
     // Connection command execution
     private async Task ExecuteConnectCommand()
     {
-        _logger.LogInformation("Attempting to connect...");
-        if (_isConnecting) return;
-        _isConnecting = true;
-
         try
         {
-            if (await _serialCommService.ConnectAsync(PortName, BaudRate, CancellationToken.None))
-            {
-                UpdateStatus("Connected");
-                _logger.LogInformation("Connected to CNC.");
-            }
-            else
-            {
-                UpdateStatus("Failed to connect");
-                _logger.LogWarning("Connection failed.");
-            }
+            UpdateStatus("Connecting...");
+            bool connected = await _serialCommService.ConnectAsync(PortName, BaudRate, CancellationToken.None);
+            UpdateStatus(connected ? "Connected" : "Failed to connect");
         }
         catch (Exception ex)
         {
-            HandleError(ex);
-        }
-        finally
-        {
-            _isConnecting = false;
-            (ConnectCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (DisconnectCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            HandleError("Connection failed", ex);
         }
     }
 
@@ -191,7 +178,7 @@ public class CNCViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            HandleError(ex);
+            HandleError(ErrorMessage, ex);
         }
         finally
         {
@@ -214,7 +201,7 @@ public class CNCViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            HandleError(ex);
+            HandleError(ErrorMessage, ex);
         }
     }
 
@@ -228,7 +215,7 @@ public class CNCViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            HandleError(ex);
+            HandleError(ErrorMessage, ex);
         }
     }
 
@@ -253,10 +240,27 @@ public class CNCViewModel : INotifyPropertyChanged
         _logger.LogWarning("Available Ports Refreshed.");
     }
     
-    private void HandleError(Exception ex, string contextMessage = null)
+    private void HandleError(string context, Exception ex)
     {
-        ErrorMessage = $"Error: {ex.Message}";
-        _logger.LogError(ex, contextMessage ?? ex.Message);
+        // Customize error messages based on the type of exception.
+        string specificMessage = ex switch
+        {
+            IOException => "Serial port error. Please check CNC connection and port.",
+            InvalidOperationException => "Invalid operation attempted. Verify CNC state.",
+            FormatException => "Invalid command format. Check G-code syntax.",
+            TimeoutException => "Command timed out. Verify CNC is responding.",
+            CNCOperationException cncEx => cncEx.Message, // Directly use the custom message in CNCOperationException
+            _ => "An unexpected error occurred. Contact support."  // Generic fallback
+        };
+
+        // Prefix with "Error:" as required by the test cases.
+        ErrorMessage = $"Error: {context} - {specificMessage}";
+
+        // Log the exception and message centrally through the error handler
+        _globalErrorHandler.HandleException(ex);
+        _logger.LogError(ex, ErrorMessage);
+
+        // Update the status for the UI to show the error state
         UpdateStatus(ErrorMessage);
     }
 
@@ -283,12 +287,26 @@ public class CNCViewModel : INotifyPropertyChanged
             "Pause", 
             StartCommand, PauseCommand, StopCommand);
 
-    private async Task ExecuteStartCommand() =>
-        await ExecuteCommandWithStatusUpdate(
-            () => _cncController.StartAsync(CancellationToken.None), 
-            "Running", 
-            "Start", 
-            StartCommand, PauseCommand, StopCommand);
+    public async Task ExecuteStartCommand()
+    {
+        try
+        {
+            UpdateStatus("Starting...");
+            await _cncController?.StartAsync(CancellationToken.None);
+            UpdateStatus("Running");
+            _logger.LogInformation("CNC started.");
+        }
+        catch (Exception ex)
+        {
+            HandleError("Failed to start the CNC.", ex);
+        }
+        finally
+        {
+            (StartCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (PauseCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (StopCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        }
+    }
 
     private async Task ExecuteStopCommand() =>
         await ExecuteCommandWithStatusUpdate(
@@ -308,7 +326,7 @@ public class CNCViewModel : INotifyPropertyChanged
         }
         catch (Exception ex)
         {
-            HandleError(ex);
+            HandleError(ErrorMessage, ex);
         }
         finally
         {

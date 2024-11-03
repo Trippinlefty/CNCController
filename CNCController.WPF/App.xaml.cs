@@ -37,6 +37,7 @@ namespace CNCController
 
             // Initialize services asynchronously
             await InitializeServicesAsync(_cancellationTokenSource.Token);
+            
 
             // Start the main window
             var viewModel = _serviceProvider.GetRequiredService<CNCViewModel>();
