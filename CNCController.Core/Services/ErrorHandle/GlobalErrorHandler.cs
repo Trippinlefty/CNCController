@@ -1,12 +1,13 @@
 ﻿using System;
 using System.IO;
+using CNCController.Core.Services.ErrorHandle;
 using Microsoft.Extensions.Logging;
 
-public class GlobalErrorHandler
+public class GlobalErrorHandler : IErrorHandler
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<GlobalErrorHandler> _logger;
 
-    public GlobalErrorHandler(ILogger logger)
+    public GlobalErrorHandler(ILogger<GlobalErrorHandler> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }

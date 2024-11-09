@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using CNCController.Core.Exceptions;
+using CNCController.Core.Services.ErrorHandle;
 using Assert = Xunit.Assert;
 
 namespace CNCController.Tests
@@ -10,7 +11,7 @@ namespace CNCController.Tests
     public class ConfigurationServiceTests : IDisposable
     {
         private readonly Mock<ILogger<ConfigurationService>> _mockLogger;
-        private readonly Mock<GlobalErrorHandler> _mockErrorHandler;
+        private readonly Mock<IErrorHandler> _mockErrorHandler;
         private readonly string _tempConfigPath;
         private readonly IConfigurationService _configService;
 
@@ -20,7 +21,7 @@ namespace CNCController.Tests
             _tempConfigPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + "_test_config.json");
 
             _mockLogger = new Mock<ILogger<ConfigurationService>>();
-            _mockErrorHandler = new Mock<GlobalErrorHandler>(_mockLogger.Object);
+            _mockErrorHandler = new Mock<IErrorHandler>();
 
             // Inject dependencies with the temporary config path
             _configService = new ConfigurationService(_mockLogger.Object, _mockErrorHandler.Object, _tempConfigPath);

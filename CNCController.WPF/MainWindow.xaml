@@ -1,7 +1,7 @@
 ﻿<Window x:Class="CNCController.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="CNC Controller" Height="600" Width="800">
+        Title="CNC Controller" Height="1920" Width="1080">
     <Grid>
         <!-- Header Section -->
         <TextBlock Text="CNC Controller Application" 
@@ -41,6 +41,11 @@
                     Margin="5,10,0,0" 
                     HorizontalAlignment="Left"
                     Command="{Binding ExecuteGCodeCommand}"/>
+            
+            <Button Content="Start" Command="{Binding StartCommand}" HorizontalAlignment="Left" Margin="10"/>
+            <Button Content="Stop" Command="{Binding StopCommand}" HorizontalAlignment="Left" Margin="10,50,0,0"/>
+            <TextBlock Text="{Binding StatusMessage}" Margin="10,100,0,0"/>
+            <Button Content="Load Config" Command="{Binding LoadConfigCommand}" HorizontalAlignment="Left" Margin="10,150,0,0"/>
         </StackPanel>
 
         <!-- Status Display -->
@@ -49,6 +54,7 @@
             <ListBox Height="100" 
                      ItemsSource="{Binding StatusMessages}"/>
         </StackPanel>
+        
 
         <!-- Error Handling -->
         <TextBlock Text="{Binding ErrorMessage}" 

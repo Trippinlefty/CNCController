@@ -1,5 +1,6 @@
 ﻿using System.IO.Ports;
 using System.Text;
+using CNCController.Core.Services.ErrorHandle;
 using Microsoft.Extensions.Logging;
 
 namespace CNCController.Core.Services.SerialCommunication
@@ -13,17 +14,17 @@ namespace CNCController.Core.Services.SerialCommunication
 
         private SerialPort? _serialPort;
         private StringBuilder _receiveBuffer;
-        private readonly GlobalErrorHandler _globalErrorHandler;
+        private readonly IErrorHandler _errorHandler;
         private readonly ILogger<SerialCommService> _logger;
         private readonly object _lock = new();
 
         public bool IsConnected => _serialPort?.IsOpen ?? false;
 
-        public SerialCommService(ILogger<SerialCommService> logger, GlobalErrorHandler globalErrorHandler)
+        public SerialCommService(ILogger<SerialCommService> logger, IErrorHandler globalErrorHandler)
         {
             _receiveBuffer = new StringBuilder();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _globalErrorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
+            _errorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
             _logger.LogInformation("SerialCommService initialized.");
         }
 
@@ -36,19 +37,19 @@ namespace CNCController.Core.Services.SerialCommunication
             }
             catch (IOException ex)
             {
-                _globalErrorHandler.HandleException(ex);
+                _errorHandler.HandleException(ex);
                 _logger.LogError(ex, "Failed to connect to the serial port.");
                 return false;
             }
             catch (UnauthorizedAccessException ex)
             {
-                _globalErrorHandler.HandleException(ex);
+                _errorHandler.HandleException(ex);
                 _logger.LogError(ex, "Access denied to the serial port.");
                 return false;
             }
             catch (Exception ex)
             {
-                _globalErrorHandler.HandleException(ex);
+                _errorHandler.HandleException(ex);
                 _logger.LogError(ex, "Unexpected error occurred while connecting to the serial port.");
                 return false;
             }
@@ -128,12 +129,12 @@ namespace CNCController.Core.Services.SerialCommunication
             }
             catch (IOException ex)
             {
-                _globalErrorHandler.HandleException(ex);
+                _errorHandler.HandleException(ex);
                 _logger.LogError(ex, "Failed to disconnect from the serial port.");
             }
             catch (Exception ex)
             {
-                _globalErrorHandler.HandleException(ex);
+                _errorHandler.HandleException(ex);
                 _logger.LogError(ex, "Unexpected error occurred during disconnection.");
             }
         }

@@ -1,5 +1,6 @@
 ﻿using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.Configuration;
+using CNCController.Core.Services.ErrorHandle;
 using CNCController.Core.Services.RelayCommand;
 using CNCController.Core.Services.SerialCommunication;
 using CNCController.ViewModels;
@@ -21,9 +22,10 @@ public class CncViewModelTests
         mockSerialCommService.Setup(s => s.ConnectAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
         ((AsyncRelayCommand)viewModel.ConnectCommand).Execute(null);
 
@@ -37,9 +39,10 @@ public class CncViewModelTests
         var mockCncController = new Mock<ICNCController>();
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
         viewModel.JogCommand.Execute(null);
 
@@ -56,9 +59,10 @@ public class CncViewModelTests
 
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
         viewModel.JogCommand.Execute(null);
 
@@ -73,9 +77,10 @@ public class CncViewModelTests
         var mockCncController = new Mock<ICNCController>();
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
         viewModel.HomeCommand.Execute(null);
 
@@ -92,9 +97,10 @@ public class CncViewModelTests
 
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
         viewModel.HomeCommand.Execute(null);
 
@@ -110,9 +116,10 @@ public class CncViewModelTests
 
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
         // Cast to AsyncRelayCommand to call ExecuteAsync()
         if (viewModel.StartCommand is AsyncRelayCommand startCommand)
@@ -132,9 +139,10 @@ public class CncViewModelTests
 
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
         if (viewModel.StartCommand is AsyncRelayCommand startCommand)
         {

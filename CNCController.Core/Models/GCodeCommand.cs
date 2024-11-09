@@ -2,7 +2,7 @@
 
 namespace CNCController.Core.Models
 {
-    public class GCodeCommand
+    public class GCodeCommand : IGCodeCommand
     {
         public string CommandText { get; set; } // Optional for storing raw command text
         public GCodeCommandType CommandType { get; } // Use GCodeCommandType for type

@@ -10,6 +10,7 @@ using System.Windows.Input;
 using CNCController.Core.Exceptions;
 using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.Configuration;
+using CNCController.Core.Services.ErrorHandle;
 using CNCController.Core.Services.RelayCommand;
 using CNCController.Core.Services.SerialCommunication;
 using Microsoft.Extensions.Logging;
@@ -19,51 +20,11 @@ namespace CNCController.ViewModels;
 public class CNCViewModel : INotifyPropertyChanged
 {
     private readonly ILogger<CNCViewModel> _logger;
-    private readonly GlobalErrorHandler _globalErrorHandler;
+    private readonly IErrorHandler _errorHandler;
     private readonly ICNCController? _cncController;
     private readonly ISerialCommService _serialCommService;
     private readonly IConfigurationService _configService;
     private CNCStatus _currentStatus;
-
-    public CNCViewModel(ICNCController? cncController, ISerialCommService serialCommService,
-        ILogger<CNCViewModel> logger, IConfigurationService configService)
-    {
-        _cncController = cncController ?? throw new ArgumentNullException(nameof(cncController));
-        _serialCommService = serialCommService ?? throw new ArgumentNullException(nameof(serialCommService));
-        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _globalErrorHandler = new GlobalErrorHandler(logger);
-
-        _currentStatus = new CNCStatus { StateMessage = "Idle" } ?? throw new ArgumentNullException(nameof(_currentStatus)); 
-
-        _serialCommService.ErrorOccurred += (sender, message) =>
-        {
-            ErrorMessage = message;
-            _logger.LogWarning("Error occurred: {Message}", message);
-        };
-
-        _logger.LogInformation("CNCViewModel initialized.");
-        RefreshAvailablePorts();
-
-        // Initialize commands
-        JogCommand = new RelayCommand(
-            execute: ExecuteJogCommand,
-            canExecute: CanExecuteJogCommand
-        );
-        HomeCommand = new RelayCommand(
-            execute: _ => ExecuteHomeCommand(),
-            canExecute: _ => CanExecuteHomeCommand()
-        );
-        
-        ConnectCommand = new AsyncRelayCommand(async () => await ExecuteConnectCommand(), CanExecuteConnectCommand);
-        DisconnectCommand = new AsyncRelayCommand(async () => await ExecuteDisconnectCommand(), CanExecuteDisconnectCommand);
-        SaveSettingsCommand = new RelayCommand(async _ => await SaveSettingsAsync());
-        StartCommand = new AsyncRelayCommand(async () => await ExecuteStartCommand(), CanExecuteStartCommand);
-        PauseCommand = new AsyncRelayCommand(async () => await ExecutePauseCommand(), CanExecutePauseCommand);
-        StopCommand = new AsyncRelayCommand(async () => await ExecuteStopCommand(), CanExecuteStopCommand);
-
-        InitializeSettingsAsync();
-    }
 
     private string _portName;
 
@@ -95,15 +56,17 @@ public class CNCViewModel : INotifyPropertyChanged
         get => _errorMessage;
         set => SetProperty(ref _errorMessage, value, nameof(ErrorMessage));
     }
-    
+
     private int _pollingInterval;
+
     public int PollingInterval
     {
         get => _pollingInterval;
         set => SetProperty(ref _pollingInterval, value, nameof(PollingInterval));
     }
-    
+
     private string _statusMessage;
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -123,13 +86,56 @@ public class CNCViewModel : INotifyPropertyChanged
     public ICommand StopCommand { get; }
 
     public event PropertyChangedEventHandler PropertyChanged;
+
+    public CNCViewModel(ICNCController? cncController, ISerialCommService serialCommService,
+        ILogger<CNCViewModel> logger, IConfigurationService configService, IErrorHandler globalErrorHandler)
+    {
+        _cncController = cncController ?? throw new ArgumentNullException(nameof(cncController));
+        _serialCommService = serialCommService ?? throw new ArgumentNullException(nameof(serialCommService));
+        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _errorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
+
+        _currentStatus = new CNCStatus { StateMessage = "Idle" } ??
+                         throw new ArgumentNullException(nameof(_currentStatus));
+
+        _serialCommService.ErrorOccurred += (sender, message) =>
+        {
+            ErrorMessage = message;
+            _logger.LogWarning("Error occurred: {Message}", message);
+        };
+
+        _logger.LogInformation("CNCViewModel initialized.");
+        RefreshAvailablePorts();
+
+        // Initialize commands
+        JogCommand = new RelayCommand(
+            execute: ExecuteJogCommand,
+            canExecute: CanExecuteJogCommand
+        );
+        HomeCommand = new RelayCommand(
+            execute: _ => ExecuteHomeCommand(),
+            canExecute: _ => CanExecuteHomeCommand()
+        );
+
+        ConnectCommand = new AsyncRelayCommand(async () => await ExecuteConnectCommand(), CanExecuteConnectCommand);
+        DisconnectCommand =
+            new AsyncRelayCommand(async () => await ExecuteDisconnectCommand(), CanExecuteDisconnectCommand);
+        SaveSettingsCommand = new RelayCommand(async _ => await SaveSettingsAsync());
+        StartCommand = new AsyncRelayCommand(async () => await ExecuteStartCommand(), CanExecuteStartCommand);
+        PauseCommand = new AsyncRelayCommand(async () => await ExecutePauseCommand(), CanExecutePauseCommand);
+        StopCommand = new AsyncRelayCommand(async () => await ExecuteStopCommand(), CanExecuteStopCommand);
+
+        InitializeSettingsAsync();
+    }
+
     private void ApplyConfiguration(AppConfig config)
     {
         PortName = config.PortName;
         BaudRate = config.BaudRate;
         PollingInterval = config.PollingInterval;
     }
-    
+
     private async Task InitializeSettingsAsync()
     {
         var config = await _configService.LoadConfigAsync();
@@ -140,7 +146,7 @@ public class CNCViewModel : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
-    
+
     private bool SetProperty<T>(ref T backingField, T value, string propertyName)
     {
         if (EqualityComparer<T>.Default.Equals(backingField, value)) return false;
@@ -239,7 +245,7 @@ public class CNCViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(AvailablePorts));
         _logger.LogWarning("Available Ports Refreshed.");
     }
-    
+
     private void HandleError(string context, Exception ex)
     {
         // Customize error messages based on the type of exception.
@@ -250,14 +256,14 @@ public class CNCViewModel : INotifyPropertyChanged
             FormatException => "Invalid command format. Check G-code syntax.",
             TimeoutException => "Command timed out. Verify CNC is responding.",
             CNCOperationException cncEx => cncEx.Message, // Directly use the custom message in CNCOperationException
-            _ => "An unexpected error occurred. Contact support."  // Generic fallback
+            _ => "An unexpected error occurred. Contact support." // Generic fallback
         };
 
         // Prefix with "Error:" as required by the test cases.
         ErrorMessage = $"Error: {context} - {specificMessage}";
 
         // Log the exception and message centrally through the error handler
-        _globalErrorHandler.HandleException(ex);
+        _errorHandler.HandleException(ex);
         _logger.LogError(ex, ErrorMessage);
 
         // Update the status for the UI to show the error state
@@ -280,11 +286,11 @@ public class CNCViewModel : INotifyPropertyChanged
         }
     }
 
-    private async Task ExecutePauseCommand()=>
+    private async Task ExecutePauseCommand() =>
         await ExecuteCommandWithStatusUpdate(
-            () => _cncController.StartAsync(CancellationToken.None), 
-            "Paused", 
-            "Pause", 
+            () => _cncController.StartAsync(CancellationToken.None),
+            "Paused",
+            "Pause",
             StartCommand, PauseCommand, StopCommand);
 
     public async Task ExecuteStartCommand()
@@ -310,12 +316,13 @@ public class CNCViewModel : INotifyPropertyChanged
 
     private async Task ExecuteStopCommand() =>
         await ExecuteCommandWithStatusUpdate(
-            () => _cncController.StopAsync(CancellationToken.None), 
-            "Stopped", 
-            "Stop", 
+            () => _cncController.StopAsync(CancellationToken.None),
+            "Stopped",
+            "Stop",
             StartCommand, PauseCommand, StopCommand);
-    
-    private async Task ExecuteCommandWithStatusUpdate(Func<Task> commandAction, string statusOnSuccess, string statusOnError, params ICommand[] commandsToUpdate)
+
+    private async Task ExecuteCommandWithStatusUpdate(Func<Task> commandAction, string statusOnSuccess,
+        string statusOnError, params ICommand[] commandsToUpdate)
     {
         try
         {

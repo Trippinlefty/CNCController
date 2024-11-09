@@ -12,7 +12,7 @@ namespace CNCController.Core.Services.CNCControl
     public class CNCController : ICNCController
     {
         private readonly ILogger<CNCController> _logger;
-        private readonly IErrorHandler _globalErrorHandler;
+        private readonly IErrorHandler _errorHandler;
         private readonly ISerialCommService _serialCommService;
         private readonly IConfigurationService _configurationService;
         private CNCStatus _currentStatus;
@@ -23,7 +23,7 @@ namespace CNCController.Core.Services.CNCControl
         public CNCController(ISerialCommService serialCommService, IConfigurationService configurationService, ILogger<CNCController> logger, IErrorHandler globalErrorHandler)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _globalErrorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
+            _errorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
 
             _serialCommService = serialCommService;
             _configurationService = configurationService;
@@ -43,13 +43,13 @@ namespace CNCController.Core.Services.CNCControl
             }
             catch (InvalidOperationException ex)
             {
-                _globalErrorHandler.HandleException(ex);
+                _errorHandler.HandleException(ex);
                 _logger.LogError(ex, "Jog command failed due to an invalid operation.");
                 throw new CNCOperationException("Jog command failed.", ex);
             }
             catch (Exception ex)
             {
-                _globalErrorHandler.HandleException(ex);
+                _errorHandler.HandleException(ex);
                 _logger.LogError(ex, "Unexpected error during jogging operation.");
                 throw;
             }
@@ -65,13 +65,13 @@ namespace CNCController.Core.Services.CNCControl
             }
             catch (InvalidOperationException ex)
             {
-                _globalErrorHandler.HandleException(ex);
+                _errorHandler.HandleException(ex);
                 _logger.LogError(ex, "Home command failed due to an invalid operation.");
                 throw new CNCOperationException("Home command failed.", ex);
             }
             catch (Exception ex)
             {
-                _globalErrorHandler.HandleException(ex);
+                _errorHandler.HandleException(ex);
                 _logger.LogError(ex, "Unexpected error during homing operation.");
                 throw;
             }
@@ -88,7 +88,7 @@ namespace CNCController.Core.Services.CNCControl
             }
             catch (Exception ex)
             {
-                _globalErrorHandler.HandleException(ex);
+                _errorHandler.HandleException(ex);
                 _logger.LogError(ex, "Error during tool change.");
                 throw;
             }
@@ -102,19 +102,52 @@ namespace CNCController.Core.Services.CNCControl
             UpdateStatus(CNCState.Idle, "Emergency Stop Activated");
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            try
+            {
+                UpdateStatus(CNCState.Running, "Starting CNC...");
+                await SendCommandAsync("M3 S1000", cancellationToken); // Example start command, replace with actual G-Code
+                UpdateStatus(CNCState.Idle, "CNC started.");
+            }
+            catch (Exception ex)
+            {
+                _errorHandler.HandleException(ex);
+                _logger.LogError(ex, "Failed to start CNC.");
+                throw new CNCOperationException("Start operation failed.", ex);
+            }
         }
 
-        public Task PauseAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            try
+            {
+                UpdateStatus(CNCState.Running, "Stopping CNC...");
+                await SendCommandAsync("M5", cancellationToken); // Example stop command, replace as needed
+                UpdateStatus(CNCState.Idle, "CNC stopped.");
+            }
+            catch (Exception ex)
+            {
+                _errorHandler.HandleException(ex);
+                _logger.LogError(ex, "Failed to stop CNC.");
+                throw new CNCOperationException("Stop operation failed.", ex);
+            }
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task PauseAsync(CancellationToken cancellationToken)
         {
-            throw new NotImplementedException();
+            try
+            {
+                UpdateStatus(CNCState.Paused, "Pausing CNC...");
+                await SendCommandAsync("M0", cancellationToken); // Example pause command
+                UpdateStatus(CNCState.Paused, "CNC Paused.");
+            }
+            catch (Exception ex)
+            {
+                _errorHandler.HandleException(ex);
+                _logger.LogError(ex, "Failed to pause CNC.");
+                throw new CNCOperationException("Pause operation failed.", ex);
+            }
         }
 
         public CNCStatus GetCurrentStatus()
@@ -162,9 +195,9 @@ namespace CNCController.Core.Services.CNCControl
             }
         }
 
-        private void UpdateStatus(CNCState state, string message)
+        private void UpdateStatus(CNCState newState, string message)
         {
-            _currentStatus.State = state;
+            _currentStatus.State = newState;
             _currentStatus.StateMessage = message;
             StatusUpdated?.Invoke(this, _currentStatus);
         }

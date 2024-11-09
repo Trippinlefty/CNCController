@@ -2,12 +2,13 @@
 using CNCController.Core.Exceptions;
 using CNCController.Core.Models;
 using CNCController.Core.Services.Configuration;
+using CNCController.Core.Services.ErrorHandle;
 using Microsoft.Extensions.Logging;
 
 public class ConfigurationService : IConfigurationService
 {
     private readonly ILogger<ConfigurationService> _logger;
-    private readonly GlobalErrorHandler _globalErrorHandler;
+    private readonly IErrorHandler _errorHandler;
     private readonly string _configFilePath;
 
     // Default config values
@@ -26,11 +27,11 @@ public class ConfigurationService : IConfigurationService
     // Constructor with customizable config file path for testing
     public ConfigurationService(
         ILogger<ConfigurationService> logger, 
-        GlobalErrorHandler globalErrorHandler, 
+        IErrorHandler globalErrorHandler, 
         string configFilePath = "config.json")  // Default file path
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _globalErrorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
+        _errorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
         _configFilePath = configFilePath;
     }
 
@@ -53,19 +54,19 @@ public class ConfigurationService : IConfigurationService
         }
         catch (FileNotFoundException ex)
         {
-            _globalErrorHandler.HandleException(ex);
+            _errorHandler.HandleException(ex);
             _logger.LogError(ex, "Configuration file not found.");
             return _defaultConfig;
         }
         catch (JsonException ex)
         {
-            _globalErrorHandler.HandleException(ex);
+            _errorHandler.HandleException(ex);
             _logger.LogError(ex, "Configuration file is corrupted.");
             throw new ConfigurationException("Configuration file is invalid.", ex);
         }
         catch (Exception ex)
         {
-            _globalErrorHandler.HandleException(ex);
+            _errorHandler.HandleException(ex);
             _logger.LogError(ex, "Unexpected error occurred while loading configuration.");
             throw;
         }
@@ -81,13 +82,13 @@ public class ConfigurationService : IConfigurationService
         }
         catch (UnauthorizedAccessException ex)
         {
-            _globalErrorHandler.HandleException(ex);
+            _errorHandler.HandleException(ex);
             _logger.LogError(ex, "Access denied while saving configuration.");
             return false;
         }
         catch (Exception ex)
         {
-            _globalErrorHandler.HandleException(ex);
+            _errorHandler.HandleException(ex);
             _logger.LogError(ex, "Unexpected error occurred while saving configuration.");
             return false;
         }
@@ -125,7 +126,7 @@ public class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _globalErrorHandler.HandleException(ex);
+            _errorHandler.HandleException(ex);
             _logger.LogError(ex, $"Error updating configuration key '{key}' with value '{value}'.");
             return false;
         }
