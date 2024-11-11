@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using CNCController.Core.Exceptions;
+using CNCController.Core.Models;
 using CNCController.Core.Services.ErrorHandle;
 using Assert = Xunit.Assert;
 

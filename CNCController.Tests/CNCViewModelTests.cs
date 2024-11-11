@@ -17,7 +17,7 @@ public class CncViewModelTests
     [Fact]
     public async Task ConnectCommand_SetsStatusToConnected_OnSuccess()
     {
-        var mockCncController = new Mock<ICNCController>(); // Added mock for ICNCController
+        var mockCncController = new Mock<ICncController>(); // Added mock for ICNCController
         var mockSerialCommService = new Mock<ISerialCommService>();
         mockSerialCommService.Setup(s => s.ConnectAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
@@ -36,7 +36,7 @@ public class CncViewModelTests
     [Fact]
     public void JogCommand_UpdatesStatusToJogging_OnSuccess()
     {
-        var mockCncController = new Mock<ICNCController>();
+        var mockCncController = new Mock<ICncController>();
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
         var mockErrorHandler = new Mock<IErrorHandler>();
@@ -53,7 +53,7 @@ public class CncViewModelTests
     [Fact]
     public void JogCommand_SetsErrorMessage_OnJoggingException()
     {
-        var mockCncController = new Mock<ICNCController>();
+        var mockCncController = new Mock<ICncController>();
         mockCncController.Setup(c => c.JogAsync("X", 10, It.IsAny<CancellationToken>()))
             .Throws(new InvalidOperationException("Jogging error"));
 
@@ -74,7 +74,7 @@ public class CncViewModelTests
     [Fact]
     public void HomeCommand_UpdatesStatusToHoming_OnSuccess()
     {
-        var mockCncController = new Mock<ICNCController>();
+        var mockCncController = new Mock<ICncController>();
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
         var mockErrorHandler = new Mock<IErrorHandler>();
@@ -91,7 +91,7 @@ public class CncViewModelTests
     [Fact]
     public void HomeCommand_SetsErrorMessage_OnHomingException()
     {
-        var mockCncController = new Mock<ICNCController>();
+        var mockCncController = new Mock<ICncController>();
         mockCncController.Setup(c => c.HomeAsync(It.IsAny<CancellationToken>()))
             .Throws(new InvalidOperationException("Homing error"));
 
@@ -111,7 +111,7 @@ public class CncViewModelTests
     [Test]
     public async Task StartCommand_SetsStatusToRunning_OnSuccess()
     {
-        var mockCncController = new Mock<ICNCController>();
+        var mockCncController = new Mock<ICncController>();
         mockCncController.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
         var mockSerialCommService = new Mock<ISerialCommService>();
@@ -133,7 +133,7 @@ public class CncViewModelTests
     [Fact]
     public async Task StartCommand_SetsErrorMessage_OnStartException()
     {
-        var mockCncController = new Mock<ICNCController>();
+        var mockCncController = new Mock<ICncController>();
         mockCncController.Setup(c => c.StartAsync(It.IsAny<CancellationToken>()))
             .Throws(new Exception("Start error"));
 

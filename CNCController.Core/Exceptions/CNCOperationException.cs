@@ -1,12 +1,11 @@
-﻿namespace CNCController.Core.Exceptions
+﻿namespace CNCController.Core.Exceptions;
+
+public class CncOperationException : Exception
 {
-    public class CNCOperationException : Exception
-    {
-        public CNCOperationException() { }
+    public CncOperationException() { }
 
-        public CNCOperationException(string message) : base(message) { }
+    public CncOperationException(string message) : base(message) { }
 
-        public CNCOperationException(string message, Exception innerException) 
-            : base(message, innerException) { }
-    }
+    public CncOperationException(string message, Exception innerException) 
+        : base(message, innerException) { }
 }

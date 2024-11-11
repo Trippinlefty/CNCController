@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using CNCController.Core.Services.ErrorHandle;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using static Moq.It;

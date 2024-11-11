@@ -3,140 +3,139 @@ using System.Text;
 using CNCController.Core.Services.ErrorHandle;
 using Microsoft.Extensions.Logging;
 
-namespace CNCController.Core.Services.SerialCommunication
+namespace CNCController.Core.Services.SerialCommunication;
+
+public class SerialCommService : ISerialCommService
 {
-    public class SerialCommService : ISerialCommService
+    public event EventHandler<string>? DataReceived;
+    public event EventHandler? ConnectionOpened;
+    public event EventHandler? ConnectionClosed;
+    public event EventHandler<string>? ErrorOccurred;
+
+    private SerialPort? _serialPort;
+    private StringBuilder _receiveBuffer;
+    private readonly IErrorHandler _errorHandler;
+    private readonly ILogger<SerialCommService> _logger;
+    private readonly object _lock = new();
+
+    public bool IsConnected => _serialPort?.IsOpen ?? false;
+
+    public SerialCommService(ILogger<SerialCommService> logger, IErrorHandler globalErrorHandler)
     {
-        public event EventHandler<string>? DataReceived;
-        public event EventHandler? ConnectionOpened;
-        public event EventHandler? ConnectionClosed;
-        public event EventHandler<string>? ErrorOccurred;
+        _receiveBuffer = new StringBuilder();
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _errorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
+        _logger.LogInformation("SerialCommService initialized.");
+    }
 
-        private SerialPort? _serialPort;
-        private StringBuilder _receiveBuffer;
-        private readonly IErrorHandler _errorHandler;
-        private readonly ILogger<SerialCommService> _logger;
-        private readonly object _lock = new();
-
-        public bool IsConnected => _serialPort?.IsOpen ?? false;
-
-        public SerialCommService(ILogger<SerialCommService> logger, IErrorHandler globalErrorHandler)
+    public async Task<bool> ConnectAsync(string portName, int baudRate, CancellationToken cancellationToken)
+    {
+        try
         {
-            _receiveBuffer = new StringBuilder();
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _errorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
-            _logger.LogInformation("SerialCommService initialized.");
+            // Code for establishing the connection
+            return true;
         }
-
-        public async Task<bool> ConnectAsync(string portName, int baudRate, CancellationToken cancellationToken)
+        catch (IOException ex)
         {
-            try
-            {
-                // Code for establishing the connection
-                return true;
-            }
-            catch (IOException ex)
-            {
-                _errorHandler.HandleException(ex);
-                _logger.LogError(ex, "Failed to connect to the serial port.");
-                return false;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _errorHandler.HandleException(ex);
-                _logger.LogError(ex, "Access denied to the serial port.");
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _errorHandler.HandleException(ex);
-                _logger.LogError(ex, "Unexpected error occurred while connecting to the serial port.");
-                return false;
-            }
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, "Failed to connect to the serial port.");
+            return false;
         }
-
-        public async Task<bool> SendCommandAsync(string command, CancellationToken cancellationToken)
+        catch (UnauthorizedAccessException ex)
         {
-            if (!IsConnected) return false;
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, "Access denied to the serial port.");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, "Unexpected error occurred while connecting to the serial port.");
+            return false;
+        }
+    }
 
-            try
-            {
-                byte[] buffer = Encoding.ASCII.GetBytes(command + "\r\n");
+    public async Task<bool> SendCommandAsync(string command, CancellationToken cancellationToken)
+    {
+        if (!IsConnected) return false;
+
+        try
+        {
+            var buffer = Encoding.ASCII.GetBytes(command + "\r\n");
                 
-                await _serialPort.BaseStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken);
+            await _serialPort.BaseStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken);
 
-                var response = await WaitForResponseAsync(cancellationToken);
-                return !string.IsNullOrEmpty(response);
-            }
-            catch (OperationCanceledException)
-            {
-                ErrorOccurred?.Invoke(this, "Command sending canceled.");
-                return false;
-            }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke(this, $"Send error: {ex.Message}");
-                return false;
-            }
+            var response = await WaitForResponseAsync(cancellationToken);
+            return !string.IsNullOrEmpty(response);
         }
-
-        private async Task<string> WaitForResponseAsync(CancellationToken cancellationToken)
+        catch (OperationCanceledException)
         {
-            try
-            {
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    if (_receiveBuffer.Length > 0)
-                    {
-                        string response = _receiveBuffer.ToString();
-                        _receiveBuffer.Clear();
-                        return response;
-                    }
-                    await Task.Delay(100, cancellationToken);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                ErrorOccurred?.Invoke(this, "Response waiting canceled.");
-            }
-            return string.Empty;
+            ErrorOccurred?.Invoke(this, "Command sending canceled.");
+            return false;
         }
-
-        private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
+        catch (Exception ex)
         {
-            try
-            {
-                if (_serialPort == null || !_serialPort.IsOpen) return;
+            ErrorOccurred?.Invoke(this, $"Send error: {ex.Message}");
+            return false;
+        }
+    }
 
-                lock (_lock)
-                {
-                    string data = _serialPort.ReadExisting();
-                    _receiveBuffer.Append(data);
-                    DataReceived?.Invoke(this, data);
-                }
-            }
-            catch (Exception ex)
+    private async Task<string> WaitForResponseAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
             {
-                ErrorOccurred?.Invoke(this, $"Read error: {ex.Message}");
+                if (_receiveBuffer.Length > 0)
+                {
+                    var response = _receiveBuffer.ToString();
+                    _receiveBuffer.Clear();
+                    return response;
+                }
+                await Task.Delay(100, cancellationToken);
             }
         }
+        catch (OperationCanceledException)
+        {
+            ErrorOccurred?.Invoke(this, "Response waiting canceled.");
+        }
+        return string.Empty;
+    }
+
+    private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
+    {
+        try
+        {
+            if (_serialPort == null || !_serialPort.IsOpen) return;
+
+            lock (_lock)
+            {
+                var data = _serialPort.ReadExisting();
+                _receiveBuffer.Append(data);
+                DataReceived?.Invoke(this, data);
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorOccurred?.Invoke(this, $"Read error: {ex.Message}");
+        }
+    }
         
-        public async Task DisconnectAsync()
+    public async Task DisconnectAsync()
+    {
+        try
         {
-            try
-            {
-                // Code to disconnect
-            }
-            catch (IOException ex)
-            {
-                _errorHandler.HandleException(ex);
-                _logger.LogError(ex, "Failed to disconnect from the serial port.");
-            }
-            catch (Exception ex)
-            {
-                _errorHandler.HandleException(ex);
-                _logger.LogError(ex, "Unexpected error occurred during disconnection.");
-            }
+            // Code to disconnect
+        }
+        catch (IOException ex)
+        {
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, "Failed to disconnect from the serial port.");
+        }
+        catch (Exception ex)
+        {
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, "Unexpected error occurred during disconnection.");
         }
     }
 }

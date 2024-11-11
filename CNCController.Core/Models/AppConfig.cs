@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿namespace CNCController.Core.Models;
 
 public class AppConfig
 {

@@ -1,8 +1,7 @@
-﻿namespace CNCController.Core.Services.GCodeProcessing
+﻿namespace CNCController.Core.Services.GCodeProcessing;
+
+public interface IGCodeParser
 {
-    public interface IGCodeParser
-    {
-        GCodeModel ParseGCode(string gCodeText);     // Parses and validates GCode text into a model
-        bool ValidateGCode(string gCodeText);        // Optionally, allows independent validation if needed
-    }
+    GCodeModel ParseGCode(string gCodeText);     // Parses and validates GCode text into a model
+    bool ValidateGCode(string gCodeText);        // Optionally, allows independent validation if needed
 }

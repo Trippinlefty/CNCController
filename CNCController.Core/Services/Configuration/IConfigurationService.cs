@@ -1,4 +1,6 @@
-﻿namespace CNCController.Core.Services.Configuration;
+﻿using CNCController.Core.Models;
+
+namespace CNCController.Core.Services.Configuration;
 
 public interface IConfigurationService
 {

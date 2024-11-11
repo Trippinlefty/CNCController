@@ -54,7 +54,7 @@ namespace CNCController
             // Register other services
             services.AddSingleton<IConfigurationService, ConfigurationService>();
             services.AddSingleton<ISerialCommService, SerialCommService>();
-            services.AddSingleton<ICNCController, CNCController.Core.Services.CNCControl.CNCController>();
+            services.AddSingleton<ICncController, CNCController.Core.Services.CNCControl.CncController>();
 
             // Register ViewModel
             services.AddSingleton<CNCViewModel>();

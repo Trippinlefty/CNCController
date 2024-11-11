@@ -1,7 +1,6 @@
-﻿using System;
-using System.IO;
-using CNCController.Core.Services.ErrorHandle;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+
+namespace CNCController.Core.Services.ErrorHandle;
 
 public class GlobalErrorHandler : IErrorHandler
 {
@@ -14,7 +13,7 @@ public class GlobalErrorHandler : IErrorHandler
 
     public void HandleException(Exception ex)
     {
-        string message = ex switch
+        var message = ex switch
         {
             IOException => "Communication error. Check the CNC connection and port settings.",
             OperationCanceledException => "Operation canceled. Please verify CNC state and try again.",

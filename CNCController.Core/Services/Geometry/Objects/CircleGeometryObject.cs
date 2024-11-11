@@ -1,5 +1,6 @@
-﻿using CNCController.Core.Services.Geometry;
-using g4;
+﻿using g4;
+
+namespace CNCController.Core.Services.Geometry.Objects;
 
 public class CircleGeometryObject : GeometryObject
 {
