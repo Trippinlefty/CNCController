@@ -10,6 +10,8 @@
             <RowDefinition Height="Auto" />
             <!-- Main content row for DesignPanel, GridSplitter, and PreviewPanel -->
             <RowDefinition Height="*" />
+            <!-- Row for ProjectsPanel (yellow section) -->
+            <RowDefinition Height="150" /> <!-- Set desired height for ProjectsPanel -->
         </Grid.RowDefinitions>
         
         <!-- TopMenuBar (Red Section in Image) -->
@@ -42,6 +44,17 @@
             <Border Grid.Column="2" Background="#FF00FF" Margin="5">
                 <cncController:PreviewPanel /> <!-- Placeholder for your PreviewPanel user control -->
             </Border>
+            
+            <!-- SidebarPanel (Green Section) - Overlay on top of the DesignPanel -->
+            <Border Grid.Column="0" VerticalAlignment="Stretch" HorizontalAlignment="Left" Width="100" 
+                    Margin="0" Background="Green" Panel.ZIndex="1">
+                <cncController:SideToolbar /> <!-- Placeholder for your SidebarPanel user control -->
+            </Border>
         </Grid>
+
+        <!-- ProjectsPanel (Yellow Section at the bottom) -->
+        <Border Grid.Row="2" Background="#FFFF00" Margin="5">
+            <cncController:ProjectsPanel /> <!-- Placeholder for your ProjectsPanel user control -->
+        </Border>
     </Grid>
 </Window>

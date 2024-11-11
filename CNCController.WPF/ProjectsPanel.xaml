@@ -3,10 +3,30 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="clr-namespace:CNCController"
              mc:Ignorable="d"
              d:DesignHeight="300" d:DesignWidth="300">
+
     <Grid>
-        
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" /> <!-- Header with "Projects" text -->
+            <RowDefinition Height="*" />     <!-- List of projects -->
+            <RowDefinition Height="Auto" /> <!-- Add project button -->
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="Projects" FontWeight="Bold" FontSize="16" Margin="10,5" />
+
+        <!-- List of Projects -->
+        <ListBox Grid.Row="1" x:Name="ProjectsListBox" Margin="10" SelectionMode="Single">
+            <!-- Sample items (can be bound to actual project data) -->
+            <ListBoxItem Content="Project 1" />
+            <ListBoxItem Content="Project 2" />
+            <ListBoxItem Content="Project 3" />
+            <!-- Bind to an ObservableCollection in the code-behind or ViewModel for dynamic content -->
+        </ListBox>
+
+        <!-- Add Project Button -->
+        <Button Grid.Row="2" Content="Add Project" HorizontalAlignment="Center" Margin="10" Padding="5,2" 
+                Width="100" Height="30" Click="AddProjectButton_Click" />
     </Grid>
 </UserControl>
