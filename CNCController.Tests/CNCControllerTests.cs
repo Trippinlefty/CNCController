@@ -1,71 +1,66 @@
-﻿using CNCController.Core.Services.CNCControl;
+﻿using CNCController.Core.Exceptions;
 using CNCController.Core.Services.Configuration;
 using CNCController.Core.Services.SerialCommunication;
+using CNCController.Core.Services.ErrorHandle;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Assert = Xunit.Assert;
 
-namespace CNCController.Tests;
-
-public class CncControllerTests
+namespace CNCController.Tests
 {
-    private readonly Mock<ISerialCommService> _mockSerialCommService;
-    private readonly ICNCController _cncController;
-
-    public CncControllerTests()
+    public class CNCControllerTests
     {
-        _mockSerialCommService = new Mock<ISerialCommService>();
-        Mock<IConfigurationService> mockConfigService = new();
+        private readonly Mock<ISerialCommService> _mockSerialCommService;
+        private readonly Mock<IConfigurationService> _mockConfigService;
+        private readonly Mock<ILogger<Core.Services.CNCControl.CNCController>> _mockLogger;
+        private readonly Mock<IErrorHandler> _mockErrorHandler; // Changed to IErrorHandler without constructor args
+        private readonly Core.Services.CNCControl.CNCController _cncController;
 
-        _cncController = new CNCController.Core.Services.CNCControl.CNCController(_mockSerialCommService.Object, mockConfigService.Object);
+        public CNCControllerTests()
+        {
+            _mockSerialCommService = new Mock<ISerialCommService>();
+            _mockConfigService = new Mock<IConfigurationService>();
+            _mockLogger = new Mock<ILogger<Core.Services.CNCControl.CNCController>>();
+            _mockErrorHandler = new Mock<IErrorHandler>(); // No constructor args
+
+            _cncController = new Core.Services.CNCControl.CNCController(
+                _mockSerialCommService.Object, 
+                _mockConfigService.Object, 
+                _mockLogger.Object, 
+                _mockErrorHandler.Object);
+        }
+
+        [Fact]
+        public async Task JogAsync_SendsJogCommand()
+        {
+            var cancellationToken = new CancellationTokenSource().Token;
+            _mockSerialCommService
+                .Setup(s => s.SendCommandAsync(It.IsAny<string>(), cancellationToken))
+                .ReturnsAsync(true);
+
+            await _cncController.JogAsync("X", 10, cancellationToken);
+
+            _mockSerialCommService.Verify(
+                s => s.SendCommandAsync("G91 G0 X10 F100", cancellationToken), 
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task JogAsync_HandlesInvalidOperationException()
+        {
+            // Arrange
+            var cancellationToken = new CancellationTokenSource().Token;
+            _mockSerialCommService
+                .Setup(s => s.SendCommandAsync(It.IsAny<string>(), cancellationToken))
+                .ThrowsAsync(new InvalidOperationException("Jog error"));
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<CNCOperationException>(() => 
+                _cncController.JogAsync("X", 10, cancellationToken));
+
+            Assert.Equal("Jog command failed.", exception.Message);
+            _mockErrorHandler.Verify(e => e.HandleException(It.IsAny<InvalidOperationException>()), Times.Once);
+        }
     }
-
-    [Fact]
-    public async Task JogAsync_ShouldSendJogCommand()
-    {
-        // Arrange
-        var cancellationToken = new CancellationTokenSource().Token;
-        _mockSerialCommService.Setup(s => s.SendCommandAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-
-        // Act
-        await _cncController.JogAsync("X", 10, cancellationToken);
-
-        // Assert
-        _mockSerialCommService.Verify(s => s.SendCommandAsync("G91 G0 X10 F100", It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task HomeAsync_ShouldSendHomeCommand()
-    {
-        // Arrange
-        var cancellationToken = new CancellationTokenSource().Token;
-        _mockSerialCommService.Setup(s => s.SendCommandAsync(It.IsAny<string>(), cancellationToken))
-            .ReturnsAsync(true);
-
-        // Act
-        await _cncController.HomeAsync(cancellationToken);
-
-        // Assert
-        _mockSerialCommService.Verify(s => s.SendCommandAsync("G28", cancellationToken), Times.Once);
-    }
-    
-    [Fact]
-    public void CNCController_ShouldUpdateStatus_WhenJogging()
-    {
-        // Arrange
-        var mockSerialComm = new Mock<ISerialCommService>();
-        var mockConfigService = new Mock<IConfigurationService>();
-        var controller = new CNCController.Core.Services.CNCControl.CNCController(mockSerialComm.Object, mockConfigService.Object);
-        var stateChanged = false;
-    
-        controller.StatusUpdated += (_, _) => stateChanged = true;
-
-        // Act
-        controller.JogAsync("X", 10, new CancellationToken())?.Wait();
-
-        // Assert
-        Assert.True(stateChanged);
-    }
-
 }

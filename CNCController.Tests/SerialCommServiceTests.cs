@@ -1,5 +1,6 @@
 ﻿using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.Configuration;
+using CNCController.Core.Services.ErrorHandle;
 using CNCController.Core.Services.RelayCommand;
 using CNCController.Core.Services.SerialCommunication;
 using CNCController.ViewModels;
@@ -43,13 +44,16 @@ public class SerialCommServiceTests
     [Fact]
     public async Task ConnectCommand_SetsStatusToFailed_OnConnectionFailure()
     {
+        var mockCncController = new Mock<ICNCController>(); // Added mock for ICNCController
         var mockSerialCommService = new Mock<ISerialCommService>();
         mockSerialCommService.Setup(s => s.ConnectAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .ReturnsAsync(false); // Simulate connection failure
         var mockConfigurationService = new Mock<IConfigurationService>();
-
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
-        var viewModel = new CNCViewModel(null, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+
+        // Initialize CNCViewModel with all required dependencies, including mockCncController
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
         if (viewModel.ConnectCommand is AsyncRelayCommand asyncConnectCommand)
         {
@@ -57,7 +61,7 @@ public class SerialCommServiceTests
         }
 
         Assert.Equal("Failed to connect", viewModel.CurrentStatus.StateMessage);
-        Assert.Null(viewModel.ErrorMessage);
+        Assert.Null(viewModel.ErrorMessage); // Assuming no specific error message for connection failure
     }
 
     [Fact]
@@ -65,9 +69,10 @@ public class SerialCommServiceTests
     {
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
         var mockCncController = new Mock<ICNCController>();
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
         
         mockSerialCommService.Setup(s => s.ConnectAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("Connection error"));
@@ -77,26 +82,28 @@ public class SerialCommServiceTests
             await asyncConnectCommand.ExecuteAsync();
         }
 
-        Assert.Equal("Error: Connection error", viewModel.ErrorMessage);
+        Assert.StartsWith("Error: Connection failed - An unexpected error occurred.", viewModel.ErrorMessage);
     }
 
     [Fact]
     public async Task DisconnectCommand_SetsErrorMessage_OnDisconnectionException()
     {
+        var mockCncController = new Mock<ICNCController>(); // Added mock for ICNCController
         var mockSerialCommService = new Mock<ISerialCommService>();
         mockSerialCommService.Setup(s => s.DisconnectAsync())
-            .ThrowsAsync(new Exception("Disconnection error"));
-        
+            .ThrowsAsync(new Exception("Disconnection error")); // Simulate disconnection exception
         var mockConfigurationService = new Mock<IConfigurationService>();
-
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
-        var viewModel = new CNCViewModel(null, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+
+        // Initialize CNCViewModel with all required dependencies, including mockCncController
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
         if (viewModel.DisconnectCommand is AsyncRelayCommand asyncDisconnectCommand)
         {
             await asyncDisconnectCommand.ExecuteAsync();
         }
 
-        Assert.Equal("Error: Disconnection error", viewModel.ErrorMessage);
+        Assert.Contains("An unexpected error occurred.", viewModel.ErrorMessage);
     }
 }

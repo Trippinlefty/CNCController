@@ -23,9 +23,9 @@ public class GlobalErrorHandlerTests
             x => x.Log(
                 LogLevel.Error,
                 IsAny<EventId>(),
-                Is<IsAnyType>((v, t) => v.ToString()!.Contains("Unhandled Exception")),
+                Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("An unexpected error occurred. Please restart or contact support.")),
                 exception,
-                IsAny<Func<IsAnyType, Exception, string>>()),
+                IsAny<Func<It.IsAnyType, Exception, string>>()),
             Times.Once);
     }
 }

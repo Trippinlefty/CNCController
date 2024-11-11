@@ -1,5 +1,6 @@
 ﻿using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.Configuration;
+using CNCController.Core.Services.ErrorHandle;
 using CNCController.Core.Services.RelayCommand;
 using CNCController.Core.Services.SerialCommunication;
 using CNCController.ViewModels;
@@ -13,37 +14,38 @@ namespace CNCController.Tests;
 [TestFixture]
 public class CncViewModelTests
 {
-    [Test]
+    [Fact]
     public async Task ConnectCommand_SetsStatusToConnected_OnSuccess()
     {
+        var mockCncController = new Mock<ICNCController>(); // Added mock for ICNCController
         var mockSerialCommService = new Mock<ISerialCommService>();
         mockSerialCommService.Setup(s => s.ConnectAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(null, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
         ((AsyncRelayCommand)viewModel.ConnectCommand).Execute(null);
 
         await Task.Delay(500); // Wait for async execution if needed
         Assert.Equal("Connected", viewModel.CurrentStatus.StateMessage);
     }
+
     [Fact]
     public void JogCommand_UpdatesStatusToJogging_OnSuccess()
     {
-        // Arrange
         var mockCncController = new Mock<ICNCController>();
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
-        // Act
         viewModel.JogCommand.Execute(null);
 
-        // Assert
         mockCncController.Verify(c => c.JogAsync("X", 10, It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal("Jogging...", viewModel.CurrentStatus.StateMessage);
     }
@@ -51,39 +53,37 @@ public class CncViewModelTests
     [Fact]
     public void JogCommand_SetsErrorMessage_OnJoggingException()
     {
-        // Arrange
         var mockCncController = new Mock<ICNCController>();
         mockCncController.Setup(c => c.JogAsync("X", 10, It.IsAny<CancellationToken>()))
-            .Throws(new Exception("Jogging error"));
+            .Throws(new InvalidOperationException("Jogging error"));
 
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
-        // Act
         viewModel.JogCommand.Execute(null);
 
-        // Assert
-        Assert.Equal("Error: Jogging error", viewModel.ErrorMessage);
+        // Assert that error message starts with "Error:" and includes specific content
+        Assert.StartsWith("Error:", viewModel.ErrorMessage);
+        Assert.Contains("Invalid operation attempted", viewModel.ErrorMessage);
     }
 
     [Fact]
     public void HomeCommand_UpdatesStatusToHoming_OnSuccess()
     {
-        // Arrange
         var mockCncController = new Mock<ICNCController>();
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object );
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
-        // Act
         viewModel.HomeCommand.Execute(null);
 
-        // Assert
         mockCncController.Verify(c => c.HomeAsync(It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal("Homing...", viewModel.CurrentStatus.StateMessage);
     }
@@ -91,22 +91,66 @@ public class CncViewModelTests
     [Fact]
     public void HomeCommand_SetsErrorMessage_OnHomingException()
     {
-        // Arrange
         var mockCncController = new Mock<ICNCController>();
         mockCncController.Setup(c => c.HomeAsync(It.IsAny<CancellationToken>()))
-            .Throws(new Exception("Homing error"));
+            .Throws(new InvalidOperationException("Homing error"));
 
         var mockSerialCommService = new Mock<ISerialCommService>();
         var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
 
-        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object);
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
 
-        // Act
         viewModel.HomeCommand.Execute(null);
 
-        // Assert
-        Assert.Equal("Error: Homing error", viewModel.ErrorMessage);
+        // Expect the error message to contain "Invalid operation attempted" as specified in HandleError
+        Assert.Contains("Invalid operation attempted", viewModel.ErrorMessage);
     }
 
+    [Test]
+    public async Task StartCommand_SetsStatusToRunning_OnSuccess()
+    {
+        var mockCncController = new Mock<ICNCController>();
+        mockCncController.Setup(c => c.StartAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var mockSerialCommService = new Mock<ISerialCommService>();
+        var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
+        var mockLogger = new Mock<ILogger<CNCViewModel>>();
+
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
+
+        // Cast to AsyncRelayCommand to call ExecuteAsync()
+        if (viewModel.StartCommand is AsyncRelayCommand startCommand)
+        {
+            await startCommand.ExecuteAsync();
+        }
+
+        Assert.Equal("Running", viewModel.CurrentStatus.StateMessage);
+    }
+
+    [Fact]
+    public async Task StartCommand_SetsErrorMessage_OnStartException()
+    {
+        var mockCncController = new Mock<ICNCController>();
+        mockCncController.Setup(c => c.StartAsync(It.IsAny<CancellationToken>()))
+            .Throws(new Exception("Start error"));
+
+        var mockSerialCommService = new Mock<ISerialCommService>();
+        var mockConfigurationService = new Mock<IConfigurationService>();
+        var mockErrorHandler = new Mock<IErrorHandler>();
+        var mockLogger = new Mock<ILogger<CNCViewModel>>();
+
+        var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
+
+        if (viewModel.StartCommand is AsyncRelayCommand startCommand)
+        {
+            await startCommand.ExecuteAsync();
+        }
+
+        // Check that the message contains specific keywords for error
+        Assert.Contains("Failed to start the CNC", viewModel.ErrorMessage);
+        Assert.Contains("An unexpected error occurred", viewModel.ErrorMessage);
+    }
 }

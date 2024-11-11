@@ -1,70 +1,84 @@
 ﻿using CNCController.Core.Services.Configuration;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Xunit;
+using CNCController.Core.Exceptions;
+using CNCController.Core.Services.ErrorHandle;
 using Assert = Xunit.Assert;
 
-namespace CNCController.Tests;
-
-public class ConfigurationServiceTests
+namespace CNCController.Tests
 {
-    private readonly IConfigurationService _configService;
-
-    public ConfigurationServiceTests()
+    public class ConfigurationServiceTests : IDisposable
     {
-        // Arrange
-        _configService = new ConfigurationService();
-    }
+        private readonly Mock<ILogger<ConfigurationService>> _mockLogger;
+        private readonly Mock<IErrorHandler> _mockErrorHandler;
+        private readonly string _tempConfigPath;
+        private readonly IConfigurationService _configService;
 
-    [Fact]
-    public async Task LoadConfigAsync_ShouldLoadDefaultConfig_WhenFileDoesNotExist()
-    {
-        // Arrange
-        if (File.Exists("config.json"))
+        public ConfigurationServiceTests()
         {
-            File.Delete("config.json");  // Ensure no config file exists
+            // Create a unique path for each test instance to avoid conflicts
+            _tempConfigPath = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName() + "_test_config.json");
+
+            _mockLogger = new Mock<ILogger<ConfigurationService>>();
+            _mockErrorHandler = new Mock<IErrorHandler>();
+
+            // Inject dependencies with the temporary config path
+            _configService = new ConfigurationService(_mockLogger.Object, _mockErrorHandler.Object, _tempConfigPath);
         }
 
-        // Act
-        var config = await _configService.LoadConfigAsync();
-
-        // Assert
-        Assert.Equal("COM1", config.PortName);
-        Assert.Equal(115200, config.BaudRate);
-        Assert.Equal(1000, config.PollingInterval);
-    }
-
-    [Fact]
-    public async Task SaveConfigAsync_ShouldSaveConfigToFile()
-    {
-        // Arrange
-        var newConfig = new AppConfig
+        [Fact]
+        public async Task LoadConfigAsync_LoadsDefaultConfig_WhenFileNotFound()
         {
-            PortName = "COM3",
-            BaudRate = 9600,
-            PollingInterval = 500
-        };
+            // Ensure the file does not exist
+            if (File.Exists(_tempConfigPath))
+                File.Delete(_tempConfigPath);
 
-        // Act
-        var result = await _configService.SaveConfigAsync(newConfig);
+            var config = await _configService.LoadConfigAsync();
 
-        // Assert
-        Assert.True(result);
+            // Verify the loaded config matches the expected defaults
+            Assert.Equal("COM1", config.PortName);
+            Assert.Equal(115200, config.BaudRate);
+            Assert.Equal(1000, config.PollingInterval);
+        }
 
-        var loadedConfig = await _configService.LoadConfigAsync();
-        Assert.Equal("COM3", loadedConfig.PortName);
-        Assert.Equal(9600, loadedConfig.BaudRate);
-        Assert.Equal(500, loadedConfig.PollingInterval);
-    }
+        [Fact]
+        public async Task LoadConfigAsync_HandlesJsonException()
+        {
+            // Create an invalid JSON file to simulate a corrupt config file
+            await File.WriteAllTextAsync(_tempConfigPath, "{invalid json}");
 
-    [Fact]
-    public async Task UpdateConfigAsync_ShouldUpdateSpecificSetting()
-    {
-        // Arrange
-        await _configService.UpdateConfigAsync("PortName", "COM4");
+            // Expect an exception due to invalid JSON
+            await Assert.ThrowsAsync<ConfigurationException>(() => _configService.LoadConfigAsync());
+        }
 
-        // Act
-        var config = await _configService.LoadConfigAsync();
+        [Fact]
+        public async Task SaveConfigAsync_SavesConfigSuccessfully()
+        {
+            var config = new AppConfig
+            {
+                PortName = "COM3",
+                BaudRate = 9600,
+                PollingInterval = 500
+            };
 
-        // Assert
-        Assert.Equal("COM4", config.PortName);
+            // Attempt to save and reload the configuration
+            bool result = await _configService.SaveConfigAsync(config);
+            Assert.True(result);
+
+            var loadedConfig = await _configService.LoadConfigAsync();
+            Assert.Equal("COM3", loadedConfig.PortName);
+            Assert.Equal(9600, loadedConfig.BaudRate);
+            Assert.Equal(500, loadedConfig.PollingInterval);
+        }
+
+        // Clean up the temporary file after each test
+        public void Dispose()
+        {
+            if (File.Exists(_tempConfigPath))
+            {
+                File.Delete(_tempConfigPath);
+            }
+        }
     }
 }

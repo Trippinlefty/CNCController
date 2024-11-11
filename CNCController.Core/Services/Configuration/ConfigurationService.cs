@@ -1,9 +1,17 @@
 ﻿using System.Text.Json;
+using CNCController.Core.Exceptions;
+using CNCController.Core.Models;
 using CNCController.Core.Services.Configuration;
+using CNCController.Core.Services.ErrorHandle;
+using Microsoft.Extensions.Logging;
 
 public class ConfigurationService : IConfigurationService
 {
-    private const string ConfigFilePath = "config.json";
+    private readonly ILogger<ConfigurationService> _logger;
+    private readonly IErrorHandler _errorHandler;
+    private readonly string _configFilePath;
+
+    // Default config values
     private readonly AppConfig _defaultConfig = new()
     {
         PortName = "COM1",
@@ -16,28 +24,51 @@ public class ConfigurationService : IConfigurationService
         }
     };
 
-    // Define default configuration values
+    // Constructor with customizable config file path for testing
+    public ConfigurationService(
+        ILogger<ConfigurationService> logger, 
+        IErrorHandler globalErrorHandler, 
+        string configFilePath = "config.json")  // Default file path
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _errorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
+        _configFilePath = configFilePath;
+    }
 
     public async Task<AppConfig> LoadConfigAsync()
     {
         try
         {
-            if (!File.Exists(ConfigFilePath))
+            // If file doesn't exist, save and return default configuration
+            if (!File.Exists(_configFilePath))
             {
-                // If no config file, save the default config
                 await SaveConfigAsync(_defaultConfig);
                 return _defaultConfig;
             }
 
-            var json = await File.ReadAllTextAsync(ConfigFilePath);
+            // Read and deserialize config file
+            var json = await File.ReadAllTextAsync(_configFilePath);
             var config = JsonSerializer.Deserialize<AppConfig>(json);
-            
+
             return config ?? _defaultConfig;
+        }
+        catch (FileNotFoundException ex)
+        {
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, "Configuration file not found.");
+            return _defaultConfig;
+        }
+        catch (JsonException ex)
+        {
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, "Configuration file is corrupted.");
+            throw new ConfigurationException("Configuration file is invalid.", ex);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading configuration: {ex.Message}");
-            return _defaultConfig;
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, "Unexpected error occurred while loading configuration.");
+            throw;
         }
     }
 
@@ -46,12 +77,19 @@ public class ConfigurationService : IConfigurationService
         try
         {
             var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-            await File.WriteAllTextAsync(ConfigFilePath, json);
+            await File.WriteAllTextAsync(_configFilePath, json);
             return true;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, "Access denied while saving configuration.");
+            return false;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error saving configuration: {ex.Message}");
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, "Unexpected error occurred while saving configuration.");
             return false;
         }
     }
@@ -88,7 +126,8 @@ public class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error updating configuration: {ex.Message}");
+            _errorHandler.HandleException(ex);
+            _logger.LogError(ex, $"Error updating configuration key '{key}' with value '{value}'.");
             return false;
         }
     }
