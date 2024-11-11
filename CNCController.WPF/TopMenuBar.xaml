@@ -29,6 +29,7 @@
                 <MenuItem Header="Connect" />
                 <MenuItem Header="Disconnect" />
                 <MenuItem Header="Settings" />
+                <MenuItem Header="Run Setup Wizard" Command="{Binding RunSetupWizardCommand}" />
             </MenuItem>
 
             <!-- Toolbox Menu -->

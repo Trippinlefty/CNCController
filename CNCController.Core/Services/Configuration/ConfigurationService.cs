@@ -132,6 +132,16 @@ public class ConfigurationService : IConfigurationService
             return false;
         }
     }
+    
+    private async Task<AppConfig> LoadDefaultConfig()
+    {
+        if (!File.Exists(_configFilePath))
+        {
+            _logger.LogWarning("Config file missing; saving and loading defaults.");
+            await SaveConfigAsync(_defaultConfig);
+        }
+        return await LoadConfigAsync();
+    }
 
     public async Task<bool> ResetToDefaultsAsync()
     {

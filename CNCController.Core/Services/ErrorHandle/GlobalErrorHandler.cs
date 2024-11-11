@@ -5,6 +5,8 @@ namespace CNCController.Core.Services.ErrorHandle;
 public class GlobalErrorHandler : IErrorHandler
 {
     private readonly ILogger<GlobalErrorHandler> _logger;
+    
+    public event Action<string> ErrorOccurred;
 
     public GlobalErrorHandler(ILogger<GlobalErrorHandler> logger)
     {
@@ -23,6 +25,7 @@ public class GlobalErrorHandler : IErrorHandler
         };
 
         _logger.LogError(ex, message);
+        ErrorOccurred?.Invoke(message); // Notify UI components if needed
         // Optional: Display this message to the user in the UI or log it as needed
     }
 }

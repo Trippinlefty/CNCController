@@ -1,0 +1,68 @@
+﻿<Window x:Class="CNCController.SetupWizard"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CNC Setup Wizard" Height="600" Width="400">
+    <Grid>
+        <TabControl>
+            <!-- Connection Tab -->
+            <TabItem Header="Connection">
+                <StackPanel Margin="10">
+                    <TextBlock Text="Select Port:" />
+                    <ComboBox ItemsSource="{Binding AvailablePorts}" SelectedItem="{Binding SelectedPort}" />
+                    
+                    <TextBlock Text="Baud Rate:" Margin="0,10,0,0" />
+                    <ComboBox ItemsSource="{Binding BaudRates}" SelectedItem="{Binding SelectedBaudRate}" />
+                    
+                    <Button Content="Test Connection" Command="{Binding TestConnectionCommand}" Margin="0,10,0,0" />
+                </StackPanel>
+            </TabItem>
+            
+            <!-- Machine Information Tab -->
+            <TabItem Header="Machine Information">
+                <StackPanel Margin="10">
+                    <TextBlock Text="Units:" />
+                    <ComboBox SelectedItem="{Binding SelectedUnits}">
+                        <ComboBoxItem>mm</ComboBoxItem>
+                        <ComboBoxItem>inches</ComboBoxItem>
+                    </ComboBox>
+
+                    <TextBlock Text="Rapid Speed:" Margin="0,10,0,0" />
+                    <TextBox Text="{Binding RapidSpeed}" />
+
+                    <TextBlock Text="Acceleration:" Margin="0,10,0,0" />
+                    <TextBox Text="{Binding Acceleration}" />
+                </StackPanel>
+            </TabItem>
+
+            <!-- Control Parameters Tab -->
+            <TabItem Header="Control Parameters">
+                <StackPanel Margin="10">
+                    <TextBlock Text="Probe Commands:" />
+                    <TextBox Text="{Binding ProbeCommands}" />
+
+                    <TextBlock Text="Safe Position Commands:" Margin="0,10,0,0" />
+                    <TextBox Text="{Binding SafePositionCommands}" />
+                </StackPanel>
+            </TabItem>
+
+            <!-- User Commands Tab -->
+            <TabItem Header="User Commands">
+                <StackPanel Margin="10">
+                    <TextBlock Text="Button 1 Command:" />
+                    <TextBox Text="{Binding Button1Command}" />
+
+                    <TextBlock Text="Button 2 Command:" Margin="0,10,0,0" />
+                    <TextBox Text="{Binding Button2Command}" />
+                </StackPanel>
+            </TabItem>
+
+            <!-- Finalize Tab -->
+            <TabItem Header="Finalize">
+                <StackPanel Margin="10" HorizontalAlignment="Center">
+                    <TextBlock Text="Review your settings and click Finish to apply them." />
+                    <Button Content="Finish" Command="{Binding SaveAndCloseCommand}" Margin="0,20,0,0" />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

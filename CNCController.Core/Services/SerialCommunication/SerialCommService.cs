@@ -7,6 +7,11 @@ namespace CNCController.Core.Services.SerialCommunication;
 
 public class SerialCommService : ISerialCommService
 {
+    public IEnumerable<string> GetAvailablePorts()
+    {
+        return SerialPort.GetPortNames(); // Retrieves available COM ports
+    }
+
     public event EventHandler<string>? DataReceived;
     public event EventHandler? ConnectionOpened;
     public event EventHandler? ConnectionClosed;
@@ -53,6 +58,11 @@ public class SerialCommService : ISerialCommService
             _logger.LogError(ex, "Unexpected error occurred while connecting to the serial port.");
             return false;
         }
+    }
+    
+    public bool ValidatePort(string portName)
+    {
+        return SerialPort.GetPortNames().Contains(portName);
     }
 
     public async Task<bool> SendCommandAsync(string command, CancellationToken cancellationToken)

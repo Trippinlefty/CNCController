@@ -70,5 +70,7 @@
         <Border Grid.Row="2" Background="#FFFF00" Margin="5">
             <cncController:ProjectsPanel /> <!-- Placeholder for your ProjectsPanel user control -->
         </Border>
+        
+        <ContentControl Content="{Binding SetupWizardViewModel}" />
     </Grid>
 </Window>
