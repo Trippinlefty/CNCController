@@ -4,7 +4,7 @@ namespace CNCController.Core.Services.GCodeProcessing
 {
     public class GCodeModel
     {
-        private readonly List<GCodeCommand> _commands = new List<GCodeCommand>();
+        private readonly List<GCodeCommand> _commands = new();
 
         // Expose commands as a read-only collection
         public IReadOnlyCollection<GCodeCommand> Commands => _commands.AsReadOnly();

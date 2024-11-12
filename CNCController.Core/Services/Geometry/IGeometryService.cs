@@ -1,6 +1,7 @@
 ﻿using CNCController.Core.Models;
-using CNCController.Core.Services.Geometry;
 using g4;
+
+namespace CNCController.Core.Services.Geometry;
 
 public interface IGeometryService
 {

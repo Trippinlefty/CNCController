@@ -1,4 +1,4 @@
-﻿namespace CNCController.Core.Services.Geometry;
+﻿namespace CNCController.Core.Services.Geometry.Objects;
 
 public abstract class GeometryObject
 {

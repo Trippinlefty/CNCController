@@ -1,7 +1,9 @@
 ﻿using CNCController.Core.Exceptions;
 using CNCController.Core.Models;
-using CNCController.Core.Services.GCodeProcessing;
+using CNCController.Core.Services.ErrorHandle;
 using Microsoft.Extensions.Logging;
+
+namespace CNCController.Core.Services.GCodeProcessing;
 
 public class GCodeParser : IGCodeParser
 {

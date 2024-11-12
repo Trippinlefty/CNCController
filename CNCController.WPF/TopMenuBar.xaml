@@ -29,6 +29,7 @@
                 <MenuItem Header="Connect" />
                 <MenuItem Header="Disconnect" />
                 <MenuItem Header="Settings" />
+                <MenuItem Header="Run Setup Wizard" Command="{Binding RunSetupWizardCommand}" />
             </MenuItem>
 
             <!-- Toolbox Menu -->
@@ -51,7 +52,7 @@
             <Button x:Name="CarveButton" Content="Carve" Width="80" Height="30" Background="#007ACC" Foreground="White" FontWeight="Bold" Margin="0,0,10,0" Click="CarveButton_Click" />
             
             <!-- Jog Button -->
-            <Button x:Name="JogButton" Content="Jog" Width="80" Height="30" Background="#444" Foreground="White" FontWeight="Bold" Click="JogButton_Click" />
+            <Button x:Name="JogButton" Content="Jog" Width="80" Height="30" Background="#444" Foreground="White" FontWeight="Bold" Command="{Binding ShowJoggingControlCommand}" />
         </StackPanel>
     </Grid>
 </UserControl>

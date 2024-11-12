@@ -11,27 +11,18 @@
         </Grid.ColumnDefinitions>
 
         <!-- Material Dropdown -->
-        <ComboBox Grid.Column="0" Margin="5" Width="150" VerticalAlignment="Center"
-                  ItemsSource="{Binding MaterialOptions}" 
-                  SelectedItem="{Binding SelectedMaterial}" />
-
+        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+            <TextBlock Text="Material:" Margin="5" Width="50" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+            <ComboBox ItemsSource="{Binding MaterialOptions}" 
+                      SelectedItem="{Binding SelectedMaterial}" Margin="5" Width="100" VerticalAlignment="Center" />
+        </StackPanel>
+        
         <!-- Bit Size and Detail -->
-        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="Bit:" Margin="5,0,0,0" VerticalAlignment="Center"/>
-            <TextBlock Text="{Binding SelectedBitSize}" Margin="5" VerticalAlignment="Center"/>
-            <TextBlock Text="Detail Angle:" Margin="10,0,0,0" VerticalAlignment="Center"/>
-            <TextBlock Text="{Binding SelectedDetailAngle}" Margin="5" VerticalAlignment="Center"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+            <TextBlock Text="Bit:" Margin="5" Width="25" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+            <ComboBox ItemsSource="{Binding BitOptions}" 
+                      SelectedItem="{Binding SelectedBit}" Margin="5" Width="100" VerticalAlignment="Center"/>
         </StackPanel>
-
-        <!-- Cut Settings -->
-        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-            <TextBlock Text="Cut Settings:" Margin="10,0,0,0" VerticalAlignment="Center"/>
-            <Slider Minimum="1" Maximum="10" Value="{Binding CutSettingValue}" Width="100" />
-        </StackPanel>
-
-        <!-- Simulate Button -->
-        <Button Content="Simulate" Grid.Column="3" Margin="10,0,5,0" Width="75"
-                Command="{Binding SimulateCommand}" />
+        
     </Grid>
-    
 </UserControl>

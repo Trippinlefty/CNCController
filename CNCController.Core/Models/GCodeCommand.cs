@@ -1,32 +1,29 @@
 ﻿using CNCController.Core.Services.GCodeProcessing;
 
-namespace CNCController.Core.Models
+namespace CNCController.Core.Models;
+
+public class GCodeCommand : IGCodeCommand
 {
-    public class GCodeCommand : IGCodeCommand
+    public string CommandText { get; set; } // Optional for storing raw command text
+    public GCodeCommandType CommandType { get; } // Use GCodeCommandType for type
+    public Dictionary<string, double> Parameters { get; }
+
+    // Unified constructor
+    public GCodeCommand(GCodeCommandType commandType, Dictionary<string, double> parameters, string commandText = "")
     {
-        public string CommandText { get; set; } // Optional for storing raw command text
-        public GCodeCommandType CommandType { get; } // Use GCodeCommandType for type
-        public Dictionary<string, double> Parameters { get; } = new Dictionary<string, double>();
+        CommandType = commandType;
+        Parameters = parameters;
+        CommandText = commandText;
+    }
 
-        // Unified constructor
-        public GCodeCommand(GCodeCommandType commandType, Dictionary<string, double> parameters, string commandText = "")
+    public bool Validate()
+    {
+        return CommandType switch
         {
-            CommandType = commandType;
-            Parameters = parameters;
-            CommandText = commandText;
-        }
-
-        public bool Validate()
-        {
-            switch (CommandType)
-            {
-                case GCodeCommandType.Motion:
-                    return Parameters.ContainsKey("X") || Parameters.ContainsKey("Y") || Parameters.ContainsKey("Z");
-                case GCodeCommandType.SpindleControl:
-                    return true;
-                default:
-                    return CommandType != GCodeCommandType.Other;
-            }
-        }
+            GCodeCommandType.Motion => Parameters.ContainsKey("X") || Parameters.ContainsKey("Y") ||
+                                       Parameters.ContainsKey("Z"),
+            GCodeCommandType.SpindleControl => true,
+            _ => CommandType != GCodeCommandType.Other
+        };
     }
 }

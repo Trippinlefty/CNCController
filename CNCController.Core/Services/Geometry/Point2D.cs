@@ -1,4 +1,6 @@
-﻿using CNCController.Core.Services.Geometry;
+﻿using CNCController.Core.Services.Geometry.Objects;
+
+namespace CNCController.Core.Services.Geometry;
 
 public class Point2D : GeometryObject
 {

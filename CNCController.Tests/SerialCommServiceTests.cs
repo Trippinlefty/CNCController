@@ -44,7 +44,7 @@ public class SerialCommServiceTests
     [Fact]
     public async Task ConnectCommand_SetsStatusToFailed_OnConnectionFailure()
     {
-        var mockCncController = new Mock<ICNCController>(); // Added mock for ICNCController
+        var mockCncController = new Mock<ICncController>(); // Added mock for ICNCController
         var mockSerialCommService = new Mock<ISerialCommService>();
         mockSerialCommService.Setup(s => s.ConnectAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false); // Simulate connection failure
@@ -71,7 +71,7 @@ public class SerialCommServiceTests
         var mockConfigurationService = new Mock<IConfigurationService>();
         var mockErrorHandler = new Mock<IErrorHandler>();
         var mockLogger = new Mock<ILogger<CNCViewModel>>();
-        var mockCncController = new Mock<ICNCController>();
+        var mockCncController = new Mock<ICncController>();
         var viewModel = new CNCViewModel(mockCncController.Object, mockSerialCommService.Object, mockLogger.Object, mockConfigurationService.Object, mockErrorHandler.Object);
         
         mockSerialCommService.Setup(s => s.ConnectAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
@@ -88,7 +88,7 @@ public class SerialCommServiceTests
     [Fact]
     public async Task DisconnectCommand_SetsErrorMessage_OnDisconnectionException()
     {
-        var mockCncController = new Mock<ICNCController>(); // Added mock for ICNCController
+        var mockCncController = new Mock<ICncController>(); // Added mock for ICNCController
         var mockSerialCommService = new Mock<ISerialCommService>();
         mockSerialCommService.Setup(s => s.DisconnectAsync())
             .ThrowsAsync(new Exception("Disconnection error")); // Simulate disconnection exception

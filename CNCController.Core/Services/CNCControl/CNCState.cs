@@ -1,6 +1,6 @@
 ﻿namespace CNCController.Core.Services.CNCControl;
 
-public enum CNCState
+public enum CncState
 {
     Idle,
     Running,

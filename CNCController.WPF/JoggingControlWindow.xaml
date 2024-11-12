@@ -1,0 +1,17 @@
+﻿<Window x:Class="CNCController.JoggingControlWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:CNCController"
+        Title="Jogging Controls" Height="400" Width="300">
+    <Grid>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Button Content="Jog Up" Command="{Binding JogUpCommand}" Margin="5"/>
+            <Button Content="Jog Down" Command="{Binding JogDownCommand}" Margin="5"/>
+            <Button Content="Jog Left" Command="{Binding JogLeftCommand}" Margin="5"/>
+            <Button Content="Jog Right" Command="{Binding JogRightCommand}" Margin="5"/>
+            <TextBox Text="{Binding JogDistance}" Width="100" Margin="5"/>
+        </StackPanel>
+    </Grid>
+</Window>

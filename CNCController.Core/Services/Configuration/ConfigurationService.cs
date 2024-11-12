@@ -1,9 +1,10 @@
 ﻿using System.Text.Json;
 using CNCController.Core.Exceptions;
 using CNCController.Core.Models;
-using CNCController.Core.Services.Configuration;
 using CNCController.Core.Services.ErrorHandle;
 using Microsoft.Extensions.Logging;
+
+namespace CNCController.Core.Services.Configuration;
 
 public class ConfigurationService : IConfigurationService
 {
@@ -106,13 +107,13 @@ public class ConfigurationService : IConfigurationService
                     config.PortName = value;
                     break;
                 case "BaudRate":
-                    if (int.TryParse(value, out int baudRate) && baudRate > 0)
+                    if (int.TryParse(value, out var baudRate) && baudRate > 0)
                         config.BaudRate = baudRate;
                     else
                         throw new ArgumentException("Invalid baud rate.");
                     break;
                 case "PollingInterval":
-                    if (int.TryParse(value, out int interval) && interval > 0)
+                    if (int.TryParse(value, out var interval) && interval > 0)
                         config.PollingInterval = interval;
                     else
                         throw new ArgumentException("Invalid polling interval.");
@@ -130,6 +131,16 @@ public class ConfigurationService : IConfigurationService
             _logger.LogError(ex, $"Error updating configuration key '{key}' with value '{value}'.");
             return false;
         }
+    }
+    
+    private async Task<AppConfig> LoadDefaultConfig()
+    {
+        if (!File.Exists(_configFilePath))
+        {
+            _logger.LogWarning("Config file missing; saving and loading defaults.");
+            await SaveConfigAsync(_defaultConfig);
+        }
+        return await LoadConfigAsync();
     }
 
     public async Task<bool> ResetToDefaultsAsync()

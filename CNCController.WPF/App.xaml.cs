@@ -22,10 +22,12 @@ namespace CNCController
             base.OnStartup(e);
 
             // Global error handling
+            // Global exception handling for unhandled exceptions
             AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
             {
                 var exception = args.ExceptionObject as Exception;
-                MessageBox.Show($"Unexpected error: {exception?.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                var errorHandler = _serviceProvider.GetService<IErrorHandler>();
+                errorHandler?.HandleException(exception);
             };
 
             // Configure and build services
@@ -54,12 +56,15 @@ namespace CNCController
             // Register other services
             services.AddSingleton<IConfigurationService, ConfigurationService>();
             services.AddSingleton<ISerialCommService, SerialCommService>();
-            services.AddSingleton<ICNCController, CNCController.Core.Services.CNCControl.CNCController>();
+            services.AddSingleton<ICncController, CncController>();
 
-            // Register ViewModel
+            // Register ViewModels
             services.AddSingleton<CNCViewModel>();
+            services.AddSingleton<SettingsViewModel>(); // Add SetupWizardViewModel here
+            services.AddSingleton<StatusViewModel>();
 
-            // Register MainWindow with its dependencies injected automatically
+            // Register SetupWizard and MainWindow with DI
+            services.AddTransient<SetupWizard>();
             services.AddTransient<MainWindow>(provider => 
             {
                 var viewModel = provider.GetRequiredService<CNCViewModel>();
