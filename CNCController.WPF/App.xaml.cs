@@ -56,11 +56,12 @@ namespace CNCController
             // Register other services
             services.AddSingleton<IConfigurationService, ConfigurationService>();
             services.AddSingleton<ISerialCommService, SerialCommService>();
-            services.AddSingleton<ICncController, Core.Services.CNCControl.CncController>();
+            services.AddSingleton<ICncController, CncController>();
 
             // Register ViewModels
             services.AddSingleton<CNCViewModel>();
             services.AddSingleton<SettingsViewModel>(); // Add SetupWizardViewModel here
+            services.AddSingleton<StatusViewModel>();
 
             // Register SetupWizard and MainWindow with DI
             services.AddTransient<SetupWizard>();

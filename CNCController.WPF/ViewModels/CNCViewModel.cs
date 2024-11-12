@@ -1,39 +1,37 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using CNCController.Core.Models;
+using CNCController;
 using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.ErrorHandle;
 using CNCController.Core.Services.RelayCommand;
-using CNCController.Core.Services.SerialCommunication;
+using CNCController.ViewModels;
 using Microsoft.Extensions.Logging;
-
-namespace CNCController.ViewModels;
 
 public class CNCViewModel : ViewModelBase
 {
     private readonly ICncController _cncController;
     private readonly ILogger<CNCViewModel> _logger;
     private readonly IErrorHandler _errorHandler;
-    private readonly ISerialCommService _serialCommService;
+    private readonly StatusViewModel _statusViewModel;
+    
     private CncStatus _currentStatus;
     private string _statusMessage;
-    
+
     public string ErrorMessage { get; private set; }
 
     public CncStatus CurrentStatus
     {
         get => _currentStatus;
-        set => SetProperty(ref _currentStatus, value, nameof(CurrentStatus));
+        set => SetProperty(ref _currentStatus, value);
     }
 
     public string StatusMessage
     {
         get => _statusMessage;
-        set => SetProperty(ref _statusMessage, value, nameof(StatusMessage));
+        set => SetProperty(ref _statusMessage, value);
     }
 
     public ICommand StartCommand { get; }
@@ -41,82 +39,97 @@ public class CNCViewModel : ViewModelBase
     public ICommand PauseCommand { get; }
     public ICommand JogCommand { get; }
     public ICommand HomeCommand { get; }
-    
+    public ICommand ShowJoggingControlCommand { get; }
     public ICommand RunSetupWizardCommand { get; }
 
     public event PropertyChangedEventHandler PropertyChanged;
 
-    public CNCViewModel(ICncController cncController, ILogger<CNCViewModel> logger, IErrorHandler errorHandler, ISerialCommService serialCommService)
+    public CNCViewModel(ICncController cncController, ILogger<CNCViewModel> logger, IErrorHandler errorHandler, StatusViewModel statusViewModel)
     {
-        _cncController = cncController;
-        _logger = logger;
-        _errorHandler = errorHandler;
-        _serialCommService = serialCommService;
+        _cncController = cncController ?? throw new ArgumentNullException(nameof(cncController));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+        _statusViewModel = statusViewModel ?? throw new ArgumentNullException(nameof(statusViewModel));
+
+        _cncController.StatusUpdated += OnStatusUpdated;
+        _cncController.ErrorOccurred += OnErrorOccurred;
 
         StartCommand = new AsyncRelayCommand(ExecuteStartCommand, CanExecuteStartCommand);
         StopCommand = new AsyncRelayCommand(ExecuteStopCommand, CanExecuteStopCommand);
         PauseCommand = new AsyncRelayCommand(ExecutePauseCommand, CanExecutePauseCommand);
-        JogCommand = new RelayCommand(ExecuteJogCommand);
-        HomeCommand = new RelayCommand(ExecuteHomeCommand); // Now compatible with RelayCommand
+        JogCommand = new AsyncRelayCommand(ExecuteJogCommand);
+        HomeCommand = new AsyncRelayCommand(ExecuteHomeCommand);
         RunSetupWizardCommand = new AsyncRelayCommand(OpenSetupWizard);
+        ShowJoggingControlCommand = new RelayCommand(OpenJoggingControl);
     }
 
-    private Task OpenSetupWizard()
+    private void OnErrorOccurred(object? sender, string errorMessage)
     {
-        // Create and show the SetupWizard window
+        _statusViewModel.SetError(errorMessage);
+    }
+
+    private void OnStatusUpdated(object? sender, CncStatus status)
+    {
+        _statusViewModel.CurrentOperation = status.StateMessage;
+    }
+
+    private async Task OpenSetupWizard()
+    {
         var setupWizard = new SetupWizard
         {
-            DataContext = new SetupWizardViewModel(_serialCommService) // Pass dependency here
+            DataContext = new SetupWizardViewModel(_cncController.SerialCommService, _cncController.ConfigurationService)
         };
-        setupWizard.ShowDialog(); // Open as a modal dialog
-        return Task.CompletedTask;
+        setupWizard.ShowDialog();
     }
 
-    private bool SetProperty<T>(ref T backingField, T value, string propertyName)
+    private async Task ExecuteStartCommand()
     {
-        if (EqualityComparer<T>.Default.Equals(backingField, value)) return false;
-        backingField = value;
-        OnPropertyChanged(propertyName);
-        return true;
+        await _cncController.StartAsync(CancellationToken.None);
+        _statusViewModel.CurrentOperation = "CNC started.";
     }
 
-    protected virtual void OnPropertyChanged(string propertyName)
+    private async Task ExecuteStopCommand()
     {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        await _cncController.StopAsync(CancellationToken.None);
+        _statusViewModel.CurrentOperation = "CNC stopped.";
     }
 
-    private async Task ExecuteStartCommand() { /* Start logic */ }
-    private async Task ExecuteStopCommand() { /* Stop logic */ }
-    private async Task ExecutePauseCommand() { /* Pause logic */ }
+    private async Task ExecutePauseCommand()
+    {
+        await _cncController.PauseAsync(CancellationToken.None);
+        _statusViewModel.CurrentOperation = "CNC paused.";
+    }
 
-    private void ExecuteJogCommand(object param) { /* Jog logic */ }
-    private void ExecuteHomeCommand(object? param)
+    private async Task ExecuteJogCommand()
+    {
+        await _cncController.JogAsync("X", 10, CancellationToken.None); // Placeholder for jogging logic
+    }
+
+    private async Task ExecuteHomeCommand()
     {
         try
         {
-            _cncController?.HomeAsync(new CancellationTokenSource().Token).Wait();
-            UpdateStatus("Homing...");
+            await _cncController.HomeAsync(CancellationToken.None);
+            _statusViewModel.CurrentOperation = "Homing...";
             _logger.LogInformation("Homing...");
         }
         catch (Exception ex)
         {
-            HandleError("Failed to execute home command", ex);
+            _errorHandler.HandleException(ex);
+            _statusViewModel.SetError("Failed to execute home command.");
         }
     }
 
-    private bool CanExecuteStartCommand() => _currentStatus.StateMessage != "Running";
-    private bool CanExecutePauseCommand() => _currentStatus.StateMessage == "Running";
-    private bool CanExecuteStopCommand() => _currentStatus.StateMessage != "Idle";
-    
-    private void HandleError(string context, Exception ex)
-    {
-        ErrorMessage = $"Error: {context}";
-        _errorHandler.HandleException(ex); // This now handles both logging and error context
-        UpdateStatus(ErrorMessage);
-    }
+    private bool CanExecuteStartCommand() => _currentStatus?.StateMessage != "Running";
+    private bool CanExecutePauseCommand() => _currentStatus?.StateMessage == "Running";
+    private bool CanExecuteStopCommand() => _currentStatus?.StateMessage != "Idle";
 
-    void UpdateStatus(string errorMessage)
+    private void OpenJoggingControl(object? parameter)
     {
-        
+        var joggingWindow = new JoggingControlWindow
+        {
+            DataContext = new JoggingControlViewModel(_cncController)
+        };
+        joggingWindow.Show();
     }
 }

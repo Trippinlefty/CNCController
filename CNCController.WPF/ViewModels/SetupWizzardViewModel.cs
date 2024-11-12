@@ -1,17 +1,26 @@
 ﻿using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
-using CNCController.Core.Services.SerialCommunication;
+using CNCController.Core.Services.Configuration;
 using CNCController.Core.Services.RelayCommand;
-using CNCController.ViewModels;
+using CNCController.Core.Services.SerialCommunication;
+
+namespace CNCController.ViewModels;
 
 public class SetupWizardViewModel : ViewModelBase
 {
     private readonly ISerialCommService _serialCommService;
+    private readonly IConfigurationService _configService;
 
     public ObservableCollection<string> AvailablePorts { get; } = new();
     public ObservableCollection<int> BaudRates { get; } = new() { 9600, 115200 };
+
+    public ICommand TestConnectionCommand { get; }
+    public ICommand SaveSettingsCommand { get; }
+    public ICommand RefreshPortsCommand { get; }
 
     private string _selectedPort;
     public string SelectedPort
@@ -27,22 +36,22 @@ public class SetupWizardViewModel : ViewModelBase
         set => SetProperty(ref _selectedBaudRate, value);
     }
 
-    public ICommand TestConnectionCommand { get; }
-
-    public SetupWizardViewModel(ISerialCommService serialCommService)
+    public SetupWizardViewModel(ISerialCommService serialCommService, IConfigurationService configService)
     {
         _serialCommService = serialCommService;
+        _configService = configService;
 
-        // Update TestConnectionCommand to use AsyncRelayCommand correctly
         TestConnectionCommand = new AsyncRelayCommand(TestConnection);
+        SaveSettingsCommand = new AsyncRelayCommand(SaveSettingsAndClose);
+        RefreshPortsCommand = new AsyncRelayCommand(RefreshAvailablePorts);
 
-        // Populate available ports
-        RefreshAvailablePorts();
+        // Refresh ports initially
+        _ = RefreshAvailablePorts();
     }
 
-    private void RefreshAvailablePorts()
+    private async Task RefreshAvailablePorts()
     {
-        var ports = _serialCommService.GetAvailablePorts();
+        var ports = await _serialCommService.GetAvailablePortsAsync();
         AvailablePorts.Clear();
         foreach (var port in ports)
         {
@@ -52,18 +61,14 @@ public class SetupWizardViewModel : ViewModelBase
 
     private async Task TestConnection()
     {
-        bool success = await _serialCommService.ConnectAsync(SelectedPort, SelectedBaudRate, CancellationToken.None);
-        
-        // Example handling based on connection success
-        if (success)
-        {
-            // Connection succeeded - provide user feedback
-            // e.g., show a success message
-        }
-        else
-        {
-            // Connection failed - provide user feedback
-            // e.g., show an error message
-        }
+        var success = await _serialCommService.ConnectAsync(SelectedPort, SelectedBaudRate, CancellationToken.None);
+        MessageBox.Show(success ? "Connection successful" : "Connection failed", success ? "Success" : "Error");
+    }
+
+    private async Task SaveSettingsAndClose()
+    {
+        await _configService.UpdateConfigAsync("PortName", SelectedPort);
+        await _configService.UpdateConfigAsync("BaudRate", SelectedBaudRate.ToString());
+        Application.Current.Windows.OfType<SetupWizard>().FirstOrDefault()?.Close();
     }
 }

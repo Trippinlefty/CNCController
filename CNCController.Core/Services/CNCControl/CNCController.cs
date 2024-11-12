@@ -16,6 +16,9 @@ public class CncController : ICncController
 
     public event EventHandler<CncStatus>? StatusUpdated;
     public event EventHandler<string>? ErrorOccurred;
+    
+    public ISerialCommService SerialCommService { get; }
+    public IConfigurationService ConfigurationService { get; }
 
     public CncController(ISerialCommService serialCommService, IConfigurationService configurationService, ILogger<CncController> logger, IErrorHandler globalErrorHandler)
     {
@@ -26,6 +29,9 @@ public class CncController : ICncController
         _configurationService = configurationService;
         _currentStatus = new CncStatus();
         _configurationService.LoadConfigAsync();
+
+        SerialCommService = _serialCommService;
+        ConfigurationService = _configurationService;
 
         _serialCommService.DataReceived += OnDataReceived;
     }
@@ -159,19 +165,27 @@ public class CncController : ICncController
             var success = await _serialCommService.SendCommandAsync(command, cancellationToken);
             if (!success)
             {
-                ErrorOccurred?.Invoke(this, "Failed to send command: " + command);
+                OnErrorOccurred($"Failed to send command: {command}");
             }
         }
         catch (OperationCanceledException)
         {
-            ErrorOccurred?.Invoke(this, $"Command '{command}' was canceled.");
+            OnErrorOccurred($"Command '{command}' was canceled.");
         }
         catch (Exception ex)
         {
-            ErrorOccurred?.Invoke(this, $"Error in command execution: {ex.Message}");
+            OnErrorOccurred($"Error in command execution: {ex.Message}");
             throw;
         }
     }
+
+    private void OnErrorOccurred(string errorMessage)
+    {
+        ErrorOccurred?.Invoke(this, errorMessage);
+        _errorHandler.HandleException(new Exception(errorMessage));
+        _logger.LogError(errorMessage);
+    }
+
 
     private void OnDataReceived(object? sender, string data)
     {
