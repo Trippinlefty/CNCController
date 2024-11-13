@@ -4,212 +4,119 @@ using CNCController.Core.Services.SerialCommunication;
 using Microsoft.Extensions.Logging;
 using CNCController.Core.Services.ErrorHandle;
 
-namespace CNCController.Core.Services.CNCControl;
-
-public class CncController : ICncController
+namespace CNCController.Core.Services.CNCControl
 {
-    private readonly ILogger<CncController> _logger;
-    private readonly IErrorHandler _errorHandler;
-    private readonly ISerialCommService _serialCommService;
-    private readonly IConfigurationService _configurationService;
-    private CncStatus _currentStatus;
-
-    public event EventHandler<CncStatus>? StatusUpdated;
-    public event EventHandler<string>? ErrorOccurred;
-    
-    public ISerialCommService SerialCommService { get; }
-    public IConfigurationService ConfigurationService { get; }
-
-    public CncController(ISerialCommService serialCommService, IConfigurationService configurationService, ILogger<CncController> logger, IErrorHandler globalErrorHandler)
+    public class CncController : ICncController
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _errorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
+        private readonly ILogger<CncController> _logger;
+        private readonly IErrorHandler _errorHandler;
+        private readonly ISerialCommService _serialCommService;
+        private readonly IConfigurationService _configurationService;
+        private CncStatus _currentStatus;
 
-        _serialCommService = serialCommService;
-        _configurationService = configurationService;
-        _currentStatus = new CncStatus();
-        _configurationService.LoadConfigAsync();
+        public event EventHandler<CncStatus>? StatusUpdated;
+        public event EventHandler<string>? ErrorOccurred;
 
-        SerialCommService = _serialCommService;
-        ConfigurationService = _configurationService;
+        public ISerialCommService SerialCommService => _serialCommService;
+        public IConfigurationService ConfigurationService => _configurationService;
 
-        _serialCommService.DataReceived += OnDataReceived;
-    }
+        public CncController(ISerialCommService serialCommService, IConfigurationService configurationService, ILogger<CncController> logger, IErrorHandler errorHandler)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
+            _serialCommService = serialCommService ?? throw new ArgumentNullException(nameof(serialCommService));
+            _configurationService = configurationService ?? throw new ArgumentNullException(nameof(configurationService));
 
-    public async Task JogAsync(string direction, double distance, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var jogCommand = $"G91 G0 {direction}{distance} F100";
-            await SendCommandAsync(jogCommand, cancellationToken);
-            UpdateStatus(CncState.Idle, "Jogging completed.");
+            _currentStatus = new CncStatus();
+            _serialCommService.DataReceived += OnDataReceived;
         }
-        catch (InvalidOperationException ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Jog command failed due to an invalid operation.");
-            throw new CncOperationException("Jog command failed.", ex);
-        }
-        catch (Exception ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Unexpected error during jogging operation.");
-            throw;
-        }
-    }
 
-    public async Task HomeAsync(CancellationToken cancellationToken)
-    {
-        try
+        public async Task JogAsync(string direction, double distance, CancellationToken cancellationToken)
         {
-            UpdateStatus(CncState.Running, "Homing");
-            await SendCommandAsync("G28", cancellationToken);
-            UpdateStatus(CncState.Idle, "Homing completed.");
+            await ExecuteCommandAsync($"G91 G0 {direction}{distance} F100", CncState.Idle, "Jogging completed.", cancellationToken);
         }
-        catch (InvalidOperationException ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Home command failed due to an invalid operation.");
-            throw new CncOperationException("Home command failed.", ex);
-        }
-        catch (Exception ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Unexpected error during homing operation.");
-            throw;
-        }
-    }
 
-    public async Task ChangeToolAsync(int toolNumber, CancellationToken cancellationToken)
-    {
-        try
+        public async Task HomeAsync(CancellationToken cancellationToken)
         {
-            UpdateStatus(CncState.Running, $"Changing tool to T{toolNumber}");
-            var toolChangeCommand = $"T{toolNumber} M6";
-            await SendCommandAsync(toolChangeCommand, cancellationToken);
-            UpdateStatus(CncState.Idle, $"Tool changed to T{toolNumber}");
+            await ExecuteCommandAsync("G28", CncState.Idle, "Homing completed.", cancellationToken, CncState.Running, "Homing");
         }
-        catch (Exception ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Error during tool change.");
-            throw;
-        }
-    }
 
-    public async Task EmergencyStopAsync(CancellationToken cancellationToken)
-    {
-        UpdateStatus(CncState.Running, "Activating Emergency Stop");
-        var stopCommand = "M112";
-        await SendCommandAsync(stopCommand, cancellationToken);
-        UpdateStatus(CncState.Idle, "Emergency Stop Activated");
-    }
+        public async Task ChangeToolAsync(int toolNumber, CancellationToken cancellationToken)
+        {
+            await ExecuteCommandAsync($"T{toolNumber} M6", CncState.Idle, $"Tool changed to T{toolNumber}", cancellationToken, CncState.Running, $"Changing tool to T{toolNumber}");
+        }
 
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        try
+        public async Task EmergencyStopAsync(CancellationToken cancellationToken)
         {
-            UpdateStatus(CncState.Running, "Starting CNC...");
-            await SendCommandAsync("M3 S1000", cancellationToken); // Example start command, replace with actual G-Code
-            UpdateStatus(CncState.Idle, "CNC started.");
+            await ExecuteCommandAsync("M112", CncState.Idle, "Emergency Stop Activated", cancellationToken, CncState.Running, "Activating Emergency Stop");
         }
-        catch (Exception ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Failed to start CNC.");
-            throw new CncOperationException("Start operation failed.", ex);
-        }
-    }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
-    {
-        try
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
-            UpdateStatus(CncState.Running, "Stopping CNC...");
-            await SendCommandAsync("M5", cancellationToken); // Example stop command, replace as needed
-            UpdateStatus(CncState.Idle, "CNC stopped.");
+            await ExecuteCommandAsync("M3 S1000", CncState.Idle, "CNC started.", cancellationToken, CncState.Running, "Starting CNC...");
         }
-        catch (Exception ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Failed to stop CNC.");
-            throw new CncOperationException("Stop operation failed.", ex);
-        }
-    }
 
-    public async Task PauseAsync(CancellationToken cancellationToken)
-    {
-        try
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            UpdateStatus(CncState.Paused, "Pausing CNC...");
-            await SendCommandAsync("M0", cancellationToken); // Example pause command
-            UpdateStatus(CncState.Paused, "CNC Paused.");
+            await ExecuteCommandAsync("M5", CncState.Idle, "CNC stopped.", cancellationToken, CncState.Running, "Stopping CNC...");
         }
-        catch (Exception ex)
+
+        public async Task PauseAsync(CancellationToken cancellationToken)
         {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Failed to pause CNC.");
-            throw new CncOperationException("Pause operation failed.", ex);
+            await ExecuteCommandAsync("M0", CncState.Paused, "CNC Paused.", cancellationToken, CncState.Paused, "Pausing CNC...");
         }
-    }
 
-    public CncStatus GetCurrentStatus()
-    {
-        return _currentStatus;
-    }
+        public CncStatus GetCurrentStatus() => _currentStatus;
 
-    private async Task SendCommandAsync(string command, CancellationToken cancellationToken)
-    {
-        try
+        private async Task ExecuteCommandAsync(string command, CncState finalState, string finalMessage, CancellationToken cancellationToken, CncState? intermediateState = null, string? intermediateMessage = null)
         {
-            var success = await _serialCommService.SendCommandAsync(command, cancellationToken);
-            if (!success)
+            if (intermediateState.HasValue && intermediateMessage != null)
+                UpdateStatus(intermediateState.Value, intermediateMessage);
+
+            try
             {
-                OnErrorOccurred($"Failed to send command: {command}");
+                var success = await _serialCommService.SendCommandAsync(command, cancellationToken);
+                if (!success)
+                    throw new InvalidOperationException($"Failed to execute command: {command}");
+                
+                UpdateStatus(finalState, finalMessage);
+            }
+            catch (Exception ex)
+            {
+                HandleError(ex, $"Error executing command: {command}");
             }
         }
-        catch (OperationCanceledException)
-        {
-            OnErrorOccurred($"Command '{command}' was canceled.");
-        }
-        catch (Exception ex)
-        {
-            OnErrorOccurred($"Error in command execution: {ex.Message}");
-            throw;
-        }
-    }
 
-    private void OnErrorOccurred(string errorMessage)
-    {
-        ErrorOccurred?.Invoke(this, errorMessage);
-        _errorHandler.HandleException(new Exception(errorMessage));
-        _logger.LogError(errorMessage);
-    }
-
-
-    private void OnDataReceived(object? sender, string data)
-    {
-        // Basic handling of CNC status data
-        if (data.Contains("ok"))
+        private void OnDataReceived(object? sender, string data)
         {
-            UpdateStatus(CncState.Idle, "Idle");
+            if (data.Contains("ok"))
+            {
+                UpdateStatus(CncState.Idle, "Idle");
+            }
+            else if (data.Contains("ALARM"))
+            {
+                UpdateStatus(CncState.Error, "Alarm");
+                ErrorOccurred?.Invoke(this, "CNC Alarm Detected");
+            }
+            else if (data.StartsWith("Position:"))
+            {
+                _currentStatus.Position = data.Replace("Position:", "").Trim();
+                UpdateStatus(CncState.Running, "Position Updated");
+            }
         }
-        else if (data.Contains("ALARM"))
-        {
-            UpdateStatus(CncState.Error, "Alarm");
-            ErrorOccurred?.Invoke(this, "CNC Alarm Detected");
-        }
-        else if (data.StartsWith("Position:"))
-        {
-            _currentStatus.Position = data.Replace("Position:", "").Trim();
-            UpdateStatus(CncState.Running, "Position Updated");
-        }
-    }
 
-    private void UpdateStatus(CncState newState, string message)
-    {
-        _currentStatus.State = newState;
-        _currentStatus.StateMessage = message;
-        StatusUpdated?.Invoke(this, _currentStatus);
+        private void UpdateStatus(CncState newState, string message)
+        {
+            _currentStatus.State = newState;
+            _currentStatus.StateMessage = message;
+            StatusUpdated?.Invoke(this, _currentStatus);
+        }
+
+        private void HandleError(Exception ex, string message)
+        {
+            _errorHandler.HandleException(ex, message);
+            _logger.LogError(ex, message);
+            ErrorOccurred?.Invoke(this, message);
+        }
     }
 }

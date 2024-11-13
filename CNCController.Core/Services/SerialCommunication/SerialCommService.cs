@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Ports;
-using System.Linq;
+﻿using System.IO.Ports;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using CNCController.Core.Services.ErrorHandle;
 using Microsoft.Extensions.Logging;
 
@@ -12,11 +7,6 @@ namespace CNCController.Core.Services.SerialCommunication
 {
     public class SerialCommService : ISerialCommService
     {
-        public Task<IEnumerable<string>> GetAvailablePortsAsync()
-        {
-            throw new NotImplementedException();
-        }
-
         public event EventHandler<string>? DataReceived;
         public event EventHandler? ConnectionOpened;
         public event EventHandler? ConnectionClosed;
@@ -38,25 +28,15 @@ namespace CNCController.Core.Services.SerialCommunication
             _logger.LogInformation("SerialCommService initialized.");
         }
 
-        public IEnumerable<string> GetAvailablePorts()
+        public async Task<IEnumerable<string>> GetAvailablePortsAsync()
         {
-            try
-            {
-                return SerialPort.GetPortNames();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving available ports");
-                ErrorOccurred?.Invoke(this, "Failed to retrieve serial ports.");
-                return Enumerable.Empty<string>();
-            }
+            return await Task.Run(() => SerialPort.GetPortNames());  // Asynchronous port retrieval
         }
 
         public async Task<bool> ConnectAsync(string portName, int baudRate, CancellationToken cancellationToken)
         {
             try
             {
-                // Add actual connection logic here
                 _serialPort = new SerialPort(portName, baudRate)
                 {
                     ReadTimeout = 500,
@@ -82,7 +62,7 @@ namespace CNCController.Core.Services.SerialCommunication
             try
             {
                 var buffer = Encoding.ASCII.GetBytes(command + "\r\n");
-                await _serialPort.BaseStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+                await _serialPort!.BaseStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
 
                 var response = await WaitForResponseAsync(cancellationToken).ConfigureAwait(false);
                 return !string.IsNullOrEmpty(response);
@@ -105,6 +85,17 @@ namespace CNCController.Core.Services.SerialCommunication
             {
                 HandleConnectionException(ex, "Failed to disconnect from the serial port.");
             }
+        }
+
+        public void Dispose()
+        {
+            if (_serialPort != null)
+            {
+                _serialPort.DataReceived -= OnDataReceived;
+                if (_serialPort.IsOpen) _serialPort.Close();
+                _serialPort.Dispose();
+            }
+            _logger.LogInformation("SerialCommService disposed.");
         }
 
         private async Task<string> WaitForResponseAsync(CancellationToken cancellationToken)
@@ -150,15 +141,15 @@ namespace CNCController.Core.Services.SerialCommunication
 
         private void HandleConnectionException(Exception ex, string message)
         {
-            _errorHandler.HandleException(ex);
+            _errorHandler.HandleException(ex, message);
             _logger.LogError(ex, message);
             ErrorOccurred?.Invoke(this, message);
         }
 
         private void HandleCommandException(Exception ex, string message)
         {
-            ErrorOccurred?.Invoke(this, message);
             _logger.LogError(ex, message);
+            ErrorOccurred?.Invoke(this, message);
         }
     }
 }

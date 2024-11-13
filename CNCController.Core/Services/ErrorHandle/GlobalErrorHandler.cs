@@ -1,31 +1,31 @@
 ﻿using Microsoft.Extensions.Logging;
 
-namespace CNCController.Core.Services.ErrorHandle;
-
-public class GlobalErrorHandler : IErrorHandler
+namespace CNCController.Core.Services.ErrorHandle
 {
-    private readonly ILogger<GlobalErrorHandler> _logger;
-    
-    public event Action<string> ErrorOccurred;
-
-    public GlobalErrorHandler(ILogger<GlobalErrorHandler> logger)
+    public class GlobalErrorHandler : IErrorHandler
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
+        private readonly ILogger<GlobalErrorHandler> _logger;
+        
+        public event Action<string>? ErrorOccurred;
 
-    public void HandleException(Exception ex)
-    {
-        var message = ex switch
+        public GlobalErrorHandler(ILogger<GlobalErrorHandler> logger)
         {
-            IOException => "Communication error. Check the CNC connection and port settings.",
-            OperationCanceledException => "Operation canceled. Please verify CNC state and try again.",
-            FormatException => "Invalid command format detected. Please correct the command and retry.",
-            TimeoutException => "Operation timed out. Check connection and retry.",
-            _ => "An unexpected error occurred. Please restart or contact support."
-        };
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
 
-        _logger.LogError(ex, message);
-        ErrorOccurred?.Invoke(message); // Notify UI components if needed
-        // Optional: Display this message to the user in the UI or log it as needed
+        public void HandleException(Exception ex, string? customMessage = null)
+        {
+            var message = customMessage ?? ex switch
+            {
+                IOException => "Communication error. Check the CNC connection and port settings.",
+                OperationCanceledException => "Operation canceled. Please verify CNC state and try again.",
+                FormatException => "Invalid command format detected. Please correct the command and retry.",
+                TimeoutException => "Operation timed out. Check connection and retry.",
+                _ => "An unexpected error occurred. Please restart or contact support."
+            };
+
+            _logger.LogError(ex, message);
+            ErrorOccurred?.Invoke(message);
+        }
     }
 }

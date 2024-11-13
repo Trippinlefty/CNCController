@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using CNCController.Core.Services.Configuration;
-using CNCController.Core.Services.RelayCommand;
 using CNCController.Core.Services.SerialCommunication;
 
 namespace CNCController.ViewModels;

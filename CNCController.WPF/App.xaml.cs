@@ -27,7 +27,7 @@ namespace CNCController
             {
                 var exception = args.ExceptionObject as Exception;
                 var errorHandler = _serviceProvider.GetService<IErrorHandler>();
-                errorHandler?.HandleException(exception);
+                errorHandler?.HandleException(exception, null);
             };
 
             // Configure and build services
