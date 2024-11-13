@@ -3,12 +3,11 @@ using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using CNCController;
 using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.ErrorHandle;
-using CNCController.Core.Services.RelayCommand;
-using CNCController.ViewModels;
 using Microsoft.Extensions.Logging;
+
+namespace CNCController.ViewModels;
 
 public class CNCViewModel : ViewModelBase
 {
@@ -60,7 +59,7 @@ public class CNCViewModel : ViewModelBase
         JogCommand = new AsyncRelayCommand(ExecuteJogCommand);
         HomeCommand = new AsyncRelayCommand(ExecuteHomeCommand);
         RunSetupWizardCommand = new AsyncRelayCommand(OpenSetupWizard);
-        ShowJoggingControlCommand = new RelayCommand(OpenJoggingControl);
+        ShowJoggingControlCommand = new AsyncRelayCommand(OpenJoggingControl);
     }
 
     private void OnErrorOccurred(object? sender, string errorMessage)
@@ -115,7 +114,7 @@ public class CNCViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            _errorHandler.HandleException(ex);
+            _errorHandler.HandleException(ex, ErrorMessage);
             _statusViewModel.SetError("Failed to execute home command.");
         }
     }
@@ -124,7 +123,7 @@ public class CNCViewModel : ViewModelBase
     private bool CanExecutePauseCommand() => _currentStatus?.StateMessage == "Running";
     private bool CanExecuteStopCommand() => _currentStatus?.StateMessage != "Idle";
 
-    private void OpenJoggingControl(object? parameter)
+    private async Task OpenJoggingControl()
     {
         var joggingWindow = new JoggingControlWindow
         {

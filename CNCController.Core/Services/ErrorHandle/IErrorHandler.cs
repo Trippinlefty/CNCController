@@ -1,6 +1,7 @@
-﻿namespace CNCController.Core.Services.ErrorHandle;
-
-public interface IErrorHandler
+﻿namespace CNCController.Core.Services.ErrorHandle
 {
-    void HandleException(Exception ex);
+    public interface IErrorHandler
+    {
+        void HandleException(Exception ex, string errorMessage);
+    }
 }

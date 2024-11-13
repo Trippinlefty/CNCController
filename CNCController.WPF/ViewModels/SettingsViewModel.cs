@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using CNCController.Core.Services.Configuration;
-using CNCController.Core.Services.RelayCommand;
 
 namespace CNCController.ViewModels
 {

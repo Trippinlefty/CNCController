@@ -12,7 +12,6 @@ public class ConfigurationService : IConfigurationService
     private readonly IErrorHandler _errorHandler;
     private readonly string _configFilePath;
 
-    // Default config values
     private readonly AppConfig _defaultConfig = new()
     {
         PortName = "COM1",
@@ -25,14 +24,13 @@ public class ConfigurationService : IConfigurationService
         }
     };
 
-    // Constructor with customizable config file path for testing
     public ConfigurationService(
         ILogger<ConfigurationService> logger, 
-        IErrorHandler globalErrorHandler, 
-        string configFilePath = "config.json")  // Default file path
+        IErrorHandler errorHandler, 
+        string configFilePath = "config.json")
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _errorHandler = globalErrorHandler ?? throw new ArgumentNullException(nameof(globalErrorHandler));
+        _errorHandler = errorHandler ?? throw new ArgumentNullException(nameof(errorHandler));
         _configFilePath = configFilePath;
     }
 
@@ -40,59 +38,28 @@ public class ConfigurationService : IConfigurationService
     {
         try
         {
-            // If file doesn't exist, save and return default configuration
             if (!File.Exists(_configFilePath))
-            {
-                await SaveConfigAsync(_defaultConfig);
-                return _defaultConfig;
-            }
+                return await LoadDefaultConfig();
 
-            // Read and deserialize config file
             var json = await File.ReadAllTextAsync(_configFilePath);
             var config = JsonSerializer.Deserialize<AppConfig>(json);
-
             return config ?? _defaultConfig;
         }
-        catch (FileNotFoundException ex)
+        catch (Exception ex) when (ex is FileNotFoundException || ex is JsonException)
         {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Configuration file not found.");
+            HandleConfigError(ex, "Failed to load configuration. Using defaults.");
             return _defaultConfig;
-        }
-        catch (JsonException ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Configuration file is corrupted.");
-            throw new ConfigurationException("Configuration file is invalid.", ex);
-        }
-        catch (Exception ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Unexpected error occurred while loading configuration.");
-            throw;
         }
     }
 
     public async Task<bool> SaveConfigAsync(AppConfig config)
     {
-        try
+        return await HandleFileOperationAsync(async () =>
         {
             var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(_configFilePath, json);
             return true;
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Access denied while saving configuration.");
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, "Unexpected error occurred while saving configuration.");
-            return false;
-        }
+        }, "Error saving configuration.");
     }
 
     public async Task<bool> UpdateConfigAsync(string key, string value)
@@ -101,50 +68,52 @@ public class ConfigurationService : IConfigurationService
         {
             var config = await LoadConfigAsync();
 
-            switch (key)
-            {
-                case "PortName":
-                    config.PortName = value;
-                    break;
-                case "BaudRate":
-                    if (int.TryParse(value, out var baudRate) && baudRate > 0)
-                        config.BaudRate = baudRate;
-                    else
-                        throw new ArgumentException("Invalid baud rate.");
-                    break;
-                case "PollingInterval":
-                    if (int.TryParse(value, out var interval) && interval > 0)
-                        config.PollingInterval = interval;
-                    else
-                        throw new ArgumentException("Invalid polling interval.");
-                    break;
-                default:
-                    config.MachineSettings[key] = value;
-                    break;
-            }
+            if (key == nameof(config.PortName))
+                config.PortName = value;
+            else if (key == nameof(config.BaudRate) && int.TryParse(value, out var baudRate) && baudRate > 0)
+                config.BaudRate = baudRate;
+            else if (key == nameof(config.PollingInterval) && int.TryParse(value, out var interval) && interval > 0)
+                config.PollingInterval = interval;
+            else
+                config.MachineSettings[key] = value;
 
             return await SaveConfigAsync(config);
         }
         catch (Exception ex)
         {
-            _errorHandler.HandleException(ex);
-            _logger.LogError(ex, $"Error updating configuration key '{key}' with value '{value}'.");
+            HandleConfigError(ex, $"Error updating config key '{key}' with value '{value}'.");
             return false;
         }
-    }
-    
-    private async Task<AppConfig> LoadDefaultConfig()
-    {
-        if (!File.Exists(_configFilePath))
-        {
-            _logger.LogWarning("Config file missing; saving and loading defaults.");
-            await SaveConfigAsync(_defaultConfig);
-        }
-        return await LoadConfigAsync();
     }
 
     public async Task<bool> ResetToDefaultsAsync()
     {
         return await SaveConfigAsync(_defaultConfig);
+    }
+
+    private async Task<AppConfig> LoadDefaultConfig()
+    {
+        _logger.LogWarning("Config file missing; saving and loading defaults.");
+        await SaveConfigAsync(_defaultConfig);
+        return _defaultConfig;
+    }
+
+    private async Task<bool> HandleFileOperationAsync(Func<Task<bool>> operation, string errorMessage)
+    {
+        try
+        {
+            return await operation();
+        }
+        catch (Exception ex)
+        {
+            HandleConfigError(ex, errorMessage);
+            return false;
+        }
+    }
+
+    private void HandleConfigError(Exception ex, string message)
+    {
+        _errorHandler.HandleException(ex, message);
+        _logger.LogError(ex, message);
     }
 }

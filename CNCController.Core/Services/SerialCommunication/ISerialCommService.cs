@@ -1,21 +1,17 @@
 ﻿namespace CNCController.Core.Services.SerialCommunication
 {
-    public interface ISerialCommService
+    public interface ISerialCommService : IDisposable
     {
         Task<bool> ConnectAsync(string portName, int baudRate, CancellationToken cancellationToken);
         Task DisconnectAsync();
         Task<bool> SendCommandAsync(string command, CancellationToken cancellationToken);
         
-        // Synchronous method for retrieving available COM ports
-        IEnumerable<string> GetAvailablePorts();
-        
-        // Asynchronous method for retrieving available COM ports
-        Task<IEnumerable<string>> GetAvailablePortsAsync();
+        Task<IEnumerable<string>> GetAvailablePortsAsync();  // Retained only the async version
 
-        event EventHandler<string>? DataReceived;   // Event for receiving data
-        event EventHandler? ConnectionOpened;       // Event for successful connection
-        event EventHandler? ConnectionClosed;       // Event for disconnection
-        event EventHandler<string>? ErrorOccurred;  // Event for errors
+        event EventHandler<string>? DataReceived;
+        event EventHandler? ConnectionOpened;
+        event EventHandler? ConnectionClosed;
+        event EventHandler<string>? ErrorOccurred;
 
         bool IsConnected { get; }
     }
