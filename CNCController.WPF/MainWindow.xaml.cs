@@ -15,5 +15,10 @@ namespace CNCController
             _viewModel = viewModel;
             DataContext = _viewModel;
         }
+
+        private void ProjectsPanel_Loaded(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }

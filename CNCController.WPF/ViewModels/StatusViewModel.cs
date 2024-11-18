@@ -6,7 +6,7 @@ namespace CNCController.ViewModels;
 
 public class StatusViewModel : ViewModelBase
 {
-    private readonly ICncController _cncController;
+    private readonly ICNCController _cncController;
     private readonly ISerialCommService _serialCommService;
     private string _position;
     private bool _isLimitSwitchTripped;
@@ -44,7 +44,7 @@ public class StatusViewModel : ViewModelBase
     public event EventHandler LimitSwitchTriggered;
     public event EventHandler AlarmStateChanged;
 
-    public StatusViewModel(ICncController cncController, ISerialCommService serialCommService)
+    public StatusViewModel(ICNCController cncController, ISerialCommService serialCommService)
     {
         _cncController = cncController;
         _serialCommService = serialCommService;

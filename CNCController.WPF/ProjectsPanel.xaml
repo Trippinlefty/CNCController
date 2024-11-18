@@ -14,7 +14,7 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <TextBlock Grid.Row="0" Text="Projects" FontWeight="Bold" FontSize="16" Margin="10,5" />
+        <TextBlock Grid.Row="0" Text="Projects" FontWeight="Bold" FontSize="16" Margin="10,5" Foreground="White" />
 
         <!-- List of Projects -->
         <ListBox Grid.Row="1" x:Name="ProjectsListBox" Margin="10" SelectionMode="Single">

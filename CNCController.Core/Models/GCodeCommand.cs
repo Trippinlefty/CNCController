@@ -4,9 +4,17 @@ namespace CNCController.Core.Models
 {
     public class GCodeCommand : IGCodeCommand
     {
+        private string _commandType;
         public string CommandText { get; set; }
         public GCodeCommandType CommandType { get; }
+
+        string IGCodeCommand.CommandType => _commandType;
+
         public Dictionary<string, double> Parameters { get; }
+        public string ToGCodeString()
+        {
+            throw new NotImplementedException();
+        }
 
         public GCodeCommand(GCodeCommandType commandType, Dictionary<string, double> parameters, string commandText = "")
         {

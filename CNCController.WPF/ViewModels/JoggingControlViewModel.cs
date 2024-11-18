@@ -7,9 +7,9 @@ namespace CNCController.ViewModels
 {
     public class JoggingControlViewModel : ViewModelBase
     {
-        private readonly ICncController _cncController;
+        private readonly ICNCController _cncController;
 
-        public JoggingControlViewModel(ICncController cncController)
+        public JoggingControlViewModel(ICNCController cncController)
         {
             _cncController = cncController;
 

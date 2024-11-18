@@ -39,13 +39,23 @@ public class ConfigurationService : IConfigurationService
         try
         {
             if (!File.Exists(_configFilePath))
-                return await LoadDefaultConfig();
+                return await LoadDefaultConfigAsync();
 
             var json = await File.ReadAllTextAsync(_configFilePath);
             var config = JsonSerializer.Deserialize<AppConfig>(json);
-            return config ?? _defaultConfig;
+
+            if (config == null)
+                throw new ConfigurationException("Configuration file is empty or invalid.");
+
+            return config;
         }
-        catch (Exception ex) when (ex is FileNotFoundException || ex is JsonException)
+        catch (JsonException ex)
+        {
+            // Log the error and rethrow as a ConfigurationException
+            HandleConfigError(ex, "Failed to parse configuration file.");
+            throw new ConfigurationException("Failed to parse configuration file.", ex);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException || ex is IOException)
         {
             HandleConfigError(ex, "Failed to load configuration. Using defaults.");
             return _defaultConfig;
@@ -54,12 +64,17 @@ public class ConfigurationService : IConfigurationService
 
     public async Task<bool> SaveConfigAsync(AppConfig config)
     {
-        return await HandleFileOperationAsync(async () =>
+        try
         {
             var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(_configFilePath, json);
             return true;
-        }, "Error saving configuration.");
+        }
+        catch (Exception ex)
+        {
+            HandleConfigError(ex, "Error saving configuration.");
+            return false;
+        }
     }
 
     public async Task<bool> UpdateConfigAsync(string key, string value)
@@ -91,24 +106,11 @@ public class ConfigurationService : IConfigurationService
         return await SaveConfigAsync(_defaultConfig);
     }
 
-    private async Task<AppConfig> LoadDefaultConfig()
+    private async Task<AppConfig> LoadDefaultConfigAsync()
     {
         _logger.LogWarning("Config file missing; saving and loading defaults.");
         await SaveConfigAsync(_defaultConfig);
         return _defaultConfig;
-    }
-
-    private async Task<bool> HandleFileOperationAsync(Func<Task<bool>> operation, string errorMessage)
-    {
-        try
-        {
-            return await operation();
-        }
-        catch (Exception ex)
-        {
-            HandleConfigError(ex, errorMessage);
-            return false;
-        }
     }
 
     private void HandleConfigError(Exception ex, string message)
@@ -117,3 +119,4 @@ public class ConfigurationService : IConfigurationService
         _logger.LogError(ex, message);
     }
 }
+

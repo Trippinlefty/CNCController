@@ -1,4 +1,5 @@
 ﻿using CNCController.Core.Exceptions;
+using CNCController.Core.Models;
 using CNCController.Core.Services.Configuration;
 using CNCController.Core.Services.SerialCommunication;
 using Microsoft.Extensions.Logging;
@@ -6,7 +7,7 @@ using CNCController.Core.Services.ErrorHandle;
 
 namespace CNCController.Core.Services.CNCControl
 {
-    public class CncController : ICncController
+    public class CncController : ICNCController
     {
         private readonly ILogger<CncController> _logger;
         private readonly IErrorHandler _errorHandler;
@@ -33,7 +34,24 @@ namespace CNCController.Core.Services.CNCControl
 
         public async Task JogAsync(string direction, double distance, CancellationToken cancellationToken)
         {
-            await ExecuteCommandAsync($"G91 G0 {direction}{distance} F100", CncState.Idle, "Jogging completed.", cancellationToken);
+            try
+            {
+                var jogCommand = $"G91 G0 {direction}{distance:F2} F100"; // Format distance to two decimal places
+                await _serialCommService.SendCommandAsync(jogCommand, cancellationToken);
+                UpdateStatus(CncState.Idle, "Jogging completed.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _errorHandler.HandleException(ex);
+                _logger.LogError(ex, "Jog command failed due to an invalid operation.");
+                throw new CncOperationException("Jog command failed.", ex);
+            }
+            catch (Exception ex)
+            {
+                _errorHandler.HandleException(ex);
+                _logger.LogError(ex, "Unexpected error during jogging operation.");
+                throw;
+            }
         }
 
         public async Task HomeAsync(CancellationToken cancellationToken)
@@ -49,6 +67,16 @@ namespace CNCController.Core.Services.CNCControl
         public async Task EmergencyStopAsync(CancellationToken cancellationToken)
         {
             await ExecuteCommandAsync("M112", CncState.Idle, "Emergency Stop Activated", cancellationToken, CncState.Running, "Activating Emergency Stop");
+        }
+
+        public Task<bool> ConnectAsync(string portName, int baudRate, CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task DisconnectAsync()
+        {
+            throw new NotImplementedException();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)

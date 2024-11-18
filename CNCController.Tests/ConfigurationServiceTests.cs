@@ -49,7 +49,7 @@ namespace CNCController.Tests
             // Create an invalid JSON file to simulate a corrupt config file
             await File.WriteAllTextAsync(_tempConfigPath, "{invalid json}");
 
-            // Expect an exception due to invalid JSON
+            // Expect a ConfigurationException due to invalid JSON
             await Assert.ThrowsAsync<ConfigurationException>(() => _configService.LoadConfigAsync());
         }
 

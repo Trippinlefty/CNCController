@@ -9,7 +9,7 @@ namespace CNCController.Core.Services.Geometry
     {
         public LineGeometryObject ConvertCommandToGeometry(IGCodeCommand command, Vector3d currentPosition)
         {
-            if (command.CommandType != GCodeCommandType.Motion)
+            if (command.CommandType != GCodeCommandType.Motion.ToString())
                 throw new NotSupportedException("Unsupported G-code command type.");
 
             var targetX = command.Parameters.TryGetValue("X", out var x) ? x : currentPosition.x;
@@ -22,7 +22,17 @@ namespace CNCController.Core.Services.Geometry
 
         public Line3d ConvertCommandToGeometry(GCodeCommand command, Vector3d currentPosition)
         {
-            throw new NotImplementedException();
+            if (command.CommandType != GCodeCommandType.Motion)
+                throw new NotSupportedException($"Unsupported G-code command type: {command.CommandType}");
+
+            // Extract target coordinates from the command parameters.
+            var targetX = command.Parameters.TryGetValue("X", out var x) ? x : currentPosition.x;
+            var targetY = command.Parameters.TryGetValue("Y", out var y) ? y : currentPosition.y;
+            var targetZ = command.Parameters.TryGetValue("Z", out var z) ? z : currentPosition.z;
+
+            // Construct the Line3d geometry from the current position to the target position.
+            var targetPosition = new Vector3d(targetX, targetY, targetZ);
+            return new Line3d(currentPosition, targetPosition);
         }
 
         public List<Line3d> OptimizePath(List<Line3d> path)

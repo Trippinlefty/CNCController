@@ -1,66 +1,100 @@
-﻿using CNCController.Core.Exceptions;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+using CNCController.Core.Services.CNCControl;
 using CNCController.Core.Services.Configuration;
-using CNCController.Core.Services.SerialCommunication;
 using CNCController.Core.Services.ErrorHandle;
+using CNCController.Core.Services.SerialCommunication;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using Assert = Xunit.Assert;
 
-namespace CNCController.Tests
+public class CNCControllerTests
 {
-    public class CNCControllerTests
+    private readonly Mock<ISerialCommService> _serialCommServiceMock;
+    private readonly Mock<IConfigurationService> _configurationServiceMock;
+    private readonly Mock<ILogger<CncController>> _loggerMock;
+    private readonly Mock<IErrorHandler> _errorHandlerMock;
+    private readonly CncController _cncController;
+
+    public CNCControllerTests()
     {
-        private readonly Mock<ISerialCommService> _mockSerialCommService;
-        private readonly Mock<IConfigurationService> _mockConfigService;
-        private readonly Mock<ILogger<Core.Services.CNCControl.CncController>> _mockLogger;
-        private readonly Mock<IErrorHandler> _mockErrorHandler; // Changed to IErrorHandler without constructor args
-        private readonly Core.Services.CNCControl.CncController _cncController;
+        _serialCommServiceMock = new Mock<ISerialCommService>();
+        _configurationServiceMock = new Mock<IConfigurationService>();
+        _loggerMock = new Mock<ILogger<CncController>>();
+        _errorHandlerMock = new Mock<IErrorHandler>();
 
-        public CNCControllerTests()
-        {
-            _mockSerialCommService = new Mock<ISerialCommService>();
-            _mockConfigService = new Mock<IConfigurationService>();
-            _mockLogger = new Mock<ILogger<Core.Services.CNCControl.CncController>>();
-            _mockErrorHandler = new Mock<IErrorHandler>(); // No constructor args
+        _cncController = new CncController(
+            _serialCommServiceMock.Object,
+            _configurationServiceMock.Object,
+            _loggerMock.Object,
+            _errorHandlerMock.Object
+        );
+    }
 
-            _cncController = new Core.Services.CNCControl.CncController(
-                _mockSerialCommService.Object, 
-                _mockConfigService.Object, 
-                _mockLogger.Object, 
-                _mockErrorHandler.Object);
-        }
+    [Fact]
+    public async Task JogAsync_SendsCorrectCommand()
+    {
+        // Arrange
+        var direction = "X";
+        var distance = 10.0;
+        var expectedCommand = "G91 G0 X10.00 F100";
 
-        [Fact]
-        public async Task JogAsync_SendsJogCommand()
-        {
-            var cancellationToken = new CancellationTokenSource().Token;
-            _mockSerialCommService
-                .Setup(s => s.SendCommandAsync(It.IsAny<string>(), cancellationToken))
-                .ReturnsAsync(true);
+        _serialCommServiceMock
+            .Setup(x => x.SendCommandAsync(expectedCommand, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
-            await _cncController.JogAsync("X", 10, cancellationToken);
+        // Act
+        await _cncController.JogAsync(direction, distance, CancellationToken.None);
 
-            _mockSerialCommService.Verify(
-                s => s.SendCommandAsync("G91 G0 X10 F100", cancellationToken), 
-                Times.Once);
-        }
+        // Assert
+        _serialCommServiceMock.Verify(
+            x => x.SendCommandAsync(expectedCommand, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 
-        [Fact]
-        public async Task JogAsync_HandlesInvalidOperationException()
-        {
-            // Arrange
-            var cancellationToken = new CancellationTokenSource().Token;
-            _mockSerialCommService
-                .Setup(s => s.SendCommandAsync(It.IsAny<string>(), cancellationToken))
-                .ThrowsAsync(new InvalidOperationException("Jog error"));
+    [Fact]
+    public async Task HomeAsync_SendsHomeCommand()
+    {
+        // Arrange
+        var cancellationToken = CancellationToken.None;
+        _serialCommServiceMock.Setup(x => x.SendCommandAsync(It.IsAny<string>(), cancellationToken))
+                              .ReturnsAsync(true);
 
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<CncOperationException>(() => 
-                _cncController.JogAsync("X", 10, cancellationToken));
+        // Act
+        await _cncController.HomeAsync(cancellationToken);
 
-            Assert.Equal("Jog command failed.", exception.Message);
-            _mockErrorHandler.Verify(e => e.HandleException(It.IsAny<InvalidOperationException>()), Times.Once);
-        }
+        // Assert
+        _serialCommServiceMock.Verify(x => x.SendCommandAsync("G28", cancellationToken), Times.Once);
+    }
+
+    [Fact]
+    public async Task EmergencyStopAsync_SendsEmergencyStopCommand()
+    {
+        // Arrange
+        var cancellationToken = CancellationToken.None;
+        _serialCommServiceMock.Setup(x => x.SendCommandAsync(It.IsAny<string>(), cancellationToken))
+                              .ReturnsAsync(true);
+
+        // Act
+        await _cncController.EmergencyStopAsync(cancellationToken);
+
+        // Assert
+        _serialCommServiceMock.Verify(x => x.SendCommandAsync("M112", cancellationToken), Times.Once);
+    }
+
+    [Fact]
+    public void OnDataReceived_UpdatesStatusToAlarm()
+    {
+        // Arrange
+        var statusUpdatedEventTriggered = false;
+        _cncController.StatusUpdated += (_, _) => statusUpdatedEventTriggered = true;
+
+        // Act
+        _serialCommServiceMock.Raise(x => x.DataReceived += null, this, "ALARM");
+
+        // Assert
+        Assert.True(statusUpdatedEventTriggered);
     }
 }

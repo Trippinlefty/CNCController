@@ -48,14 +48,23 @@ namespace CNCController.Core.Services.GCodeProcessing
         public GCodeCommand Parse(string rawCommand)
         {
             if (string.IsNullOrWhiteSpace(rawCommand))
+            {
+                _logger.LogError("G-code command cannot be empty or whitespace.");
                 throw new InvalidGCodeException("G-code command cannot be empty or whitespace.");
+            }
 
             if (!IsValidLine(rawCommand))
+            {
+                _logger.LogError("The G-code command is improperly formatted.");
                 throw new InvalidGCodeException("The G-code command is improperly formatted.");
+            }
 
             GCodeCommandType commandType = DetermineCommandType(rawCommand);
             if (commandType == GCodeCommandType.Other)
+            {
+                _logger.LogError("Unsupported G-code command.");
                 throw new InvalidGCodeException("Unsupported G-code command.");
+            }
 
             var parameters = ExtractParameters(rawCommand);
             return new GCodeCommand(commandType, parameters, rawCommand);
@@ -99,6 +108,21 @@ namespace CNCController.Core.Services.GCodeProcessing
                 return GCodeCommandType.Pause;
 
             return GCodeCommandType.Other;
+        }
+
+        public List<IGCodeCommand> ParseFile(string filePath)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IGCodeCommand ParseLine(string line)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool ValidateCommand(IGCodeCommand command)
+        {
+            throw new NotImplementedException();
         }
     }
 }

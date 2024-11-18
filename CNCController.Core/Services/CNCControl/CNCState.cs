@@ -5,6 +5,7 @@ public enum CncState
     Idle,
     Running,
     Paused,
-    Completed,
-    Error
+    Error,
+    Homing,
+    EmergencyStop
 }

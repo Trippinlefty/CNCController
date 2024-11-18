@@ -39,14 +39,14 @@ public class GCodeParserTests
     {
         // Act & Assert
         var exception = Assert.Throws<InvalidGCodeException>(() => _gCodeParser.Parse(""));
-        Assert.Contains("The G-code command is empty or whitespace.", exception.Message);
+        Assert.Contains("G-code command cannot be empty or whitespace", exception.Message);
 
         // Verify that LogError was called with the appropriate message
         _mockLogger.Verify(logger =>
             logger.Log(
                 LogLevel.Error,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("G-code command is empty or whitespace.")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("G-code command cannot be empty or whitespace")),
                 It.IsAny<Exception>(),
                 (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()
             ), Times.Once);
@@ -59,9 +59,9 @@ public class GCodeParserTests
         var exception = Assert.Throws<InvalidGCodeException>(() => _gCodeParser.Parse("InvalidCommand"));
 
         // Assert
-        Assert.Contains("The G-code command is improperly formatted", exception.Message);
+        Assert.Contains("The G-code command is improperly formatted.", exception.Message);
 
-        // Verify that the logger logged the formatting error
+        // Verify logger
         _mockLogger.Verify(logger =>
             logger.Log(
                 LogLevel.Error,
@@ -77,11 +77,11 @@ public class GCodeParserTests
     {
         // Arrange & Act
         var exception = Assert.Throws<InvalidGCodeException>(() => _gCodeParser.Parse("M200"));
-
+    
         // Assert
         Assert.Contains("Unsupported G-code command", exception.Message);
-
-        // Verify that the logger logged the unsupported command error
+    
+        // Verify logger
         _mockLogger.Verify(logger =>
             logger.Log(
                 LogLevel.Error,
@@ -91,5 +91,4 @@ public class GCodeParserTests
                 (Func<It.IsAnyType, Exception, string>)It.IsAny<object>()
             ), Times.Once);
     }
-
 }

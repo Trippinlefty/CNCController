@@ -2,6 +2,6 @@
 {
     public interface IErrorHandler
     {
-        void HandleException(Exception ex, string errorMessage);
+        void HandleException(Exception exception, string contextMessage = "");
     }
 }

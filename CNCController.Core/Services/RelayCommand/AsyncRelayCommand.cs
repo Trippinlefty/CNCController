@@ -18,9 +18,20 @@ public class AsyncRelayCommand : ICommand
 
     public bool CanExecute(object? parameter) => !_isExecuting && (_canExecute?.Invoke() ?? true);
 
-    public async void Execute(object? parameter)
+    public void Execute(object? parameter)
     {
-        if (!CanExecute(parameter)) return;
+        // Call ExecuteAsync internally when Execute is invoked
+        ExecuteAsync().FireAndForgetSafeAsync(ex => 
+        {
+            // Optionally handle exceptions from ExecuteAsync here
+            // Log or display the error if necessary
+            Console.WriteLine($"Error in AsyncRelayCommand: {ex.Message}");
+        });
+    }
+
+    public async Task ExecuteAsync()
+    {
+        if (!CanExecute(null)) return;
 
         _isExecuting = true;
         RaiseCanExecuteChanged();
@@ -37,4 +48,20 @@ public class AsyncRelayCommand : ICommand
     }
 
     public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+}
+
+// Extension to handle fire-and-forget tasks safely
+public static class TaskExtensions
+{
+    public static async void FireAndForgetSafeAsync(this Task task, Action<Exception>? onException = null)
+    {
+        try
+        {
+            await task;
+        }
+        catch (Exception ex)
+        {
+            onException?.Invoke(ex);
+        }
+    }
 }

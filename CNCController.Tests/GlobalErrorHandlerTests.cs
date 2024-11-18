@@ -23,10 +23,11 @@ public class GlobalErrorHandlerTests
         mockLogger.Verify(
             x => x.Log(
                 LogLevel.Error,
-                IsAny<EventId>(),
-                Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("An unexpected error occurred. Please restart or contact support.")),
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Test Exception")),
                 exception,
-                IsAny<Func<It.IsAnyType, Exception, string>>()),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()),
             Times.Once);
     }
+
 }

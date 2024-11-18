@@ -1,10 +1,21 @@
-﻿namespace CNCController.Core.Services.CNCControl;
+﻿using CNCController.Core.Services.CNCControl;
 
-public class CncStatus
+namespace CNCController.Core.Models
 {
-    public CncState State { get; set; }
-    public string Position { get; set; } = "0, 0, 0";
-    public bool IsRunning { get; set; } = false;
-    public string CurrentTool { get; set; } = "None";
-    public string StateMessage { get; set; } = "Idle";
+    public class CncStatus
+    {
+        public CncState State { get; set; }
+        public string StateMessage { get; set; }
+        public string Position { get; set; }
+        public bool IsConnected { get; set; }
+
+        public CncStatus()
+        {
+            // Default initialization
+            State = CncState.Idle;
+            StateMessage = "Idle";
+            Position = "X: 0, Y: 0, Z: 0";
+            IsConnected = false;
+        }
+    }
 }

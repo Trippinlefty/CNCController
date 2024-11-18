@@ -9,40 +9,40 @@
         <Menu Background="#2E2E2E" Foreground="White" HorizontalAlignment="Stretch" VerticalAlignment="Center">
             <!-- Project Menu -->
             <MenuItem Header="Project">
-                <MenuItem Header="New Project" />
-                <MenuItem Header="Open Project" />
-                <MenuItem Header="Save Project" />
-                <MenuItem Header="Close Project" />
+                <MenuItem Header="New Project" Foreground="Black" />
+                <MenuItem Header="Open Project" Foreground="Black" />
+                <MenuItem Header="Save Project" Foreground="Black" />
+                <MenuItem Header="Close Project" Foreground="Black" />
             </MenuItem>
 
             <!-- Edit Menu -->
             <MenuItem Header="Edit">
-                <MenuItem Header="Undo" />
-                <MenuItem Header="Redo" />
-                <MenuItem Header="Cut" />
-                <MenuItem Header="Copy" />
-                <MenuItem Header="Paste" />
+                <MenuItem Header="Undo" Foreground="Black" />
+                <MenuItem Header="Redo"  Foreground="Black"/>
+                <MenuItem Header="Cut" Foreground="Black" />
+                <MenuItem Header="Copy" Foreground="Black"/>
+                <MenuItem Header="Paste" Foreground="Black"/>
             </MenuItem>
 
             <!-- Machine Menu -->
             <MenuItem Header="Machine">
-                <MenuItem Header="Connect" />
-                <MenuItem Header="Disconnect" />
-                <MenuItem Header="Settings" />
-                <MenuItem Header="Run Setup Wizard" Command="{Binding RunSetupWizardCommand}" />
+                <MenuItem Header="Connect" Foreground="Black" />
+                <MenuItem Header="Disconnect" Foreground="Black" />
+                <MenuItem Header="Settings" Foreground="Black"  />
+                <MenuItem Header="Run Setup Wizard" Command="{Binding RunSetupWizardCommand}" Foreground="Black" />
             </MenuItem>
 
             <!-- Toolbox Menu -->
             <MenuItem Header="Toolbox">
-                <MenuItem Header="Tool Library" />
-                <MenuItem Header="Add Tool" />
-                <MenuItem Header="Manage Tools" />
+                <MenuItem Header="Tool Library" Foreground="Black" />
+                <MenuItem Header="Add Tool" Foreground="Black" />
+                <MenuItem Header="Manage Tools" Foreground="Black" />
             </MenuItem>
 
             <!-- Help Menu -->
             <MenuItem Header="Help">
-                <MenuItem Header="User Manual" />
-                <MenuItem Header="About" />
+                <MenuItem Header="User Manual" Foreground="Black" />
+                <MenuItem Header="About" Foreground="Black" />
             </MenuItem>
         </Menu>
         
