@@ -1,7 +1,4 @@
-﻿using System.Collections.Generic;
-using CNCController.Core.Models;
-
-namespace CNCController.Core.Services.GCodeProcessing
+﻿namespace CNCController.Core.Services.GCodeProcessing
 {
     public interface IGCodeParser
     {

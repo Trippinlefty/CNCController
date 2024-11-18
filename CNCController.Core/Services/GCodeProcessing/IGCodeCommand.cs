@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace CNCController.Core.Services.GCodeProcessing
+﻿namespace CNCController.Core.Services.GCodeProcessing
 {
     public interface IGCodeCommand
     {

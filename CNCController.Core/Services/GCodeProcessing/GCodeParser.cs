@@ -112,7 +112,26 @@ namespace CNCController.Core.Services.GCodeProcessing
 
         public List<IGCodeCommand> ParseFile(string filePath)
         {
-            throw new NotImplementedException();
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException($"File not found: {filePath}");
+
+            var lines = File.ReadAllLines(filePath);
+            var commands = new List<IGCodeCommand>();
+
+            foreach (var line in lines)
+            {
+                try
+                {
+                    var command = Parse(line.Trim());
+                    commands.Add(command);
+                }
+                catch (InvalidGCodeException ex)
+                {
+                    _logger.LogWarning($"Invalid GCode line skipped: {line}. Error: {ex.Message}");
+                }
+            }
+
+            return commands;
         }
 
         public IGCodeCommand ParseLine(string line)

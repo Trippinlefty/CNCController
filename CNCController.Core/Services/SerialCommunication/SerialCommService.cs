@@ -1,5 +1,6 @@
 ﻿using System.IO.Ports;
 using System.Text;
+using CNCController.Core.Models;
 using CNCController.Core.Services.ErrorHandle;
 using Microsoft.Extensions.Logging;
 
@@ -90,6 +91,22 @@ namespace CNCController.Core.Services.SerialCommunication
             }
             return string.Empty;
         }
+        
+        public async Task<GrblStatus> GetGrblStatusAsync(CancellationToken cancellationToken)
+        {
+            await SendCommandAsync("?", cancellationToken);
+            var response = await WaitForResponseAsync(cancellationToken);
+            return ParseGrblStatus(response);
+        }
+
+        private GrblStatus ParseGrblStatus(string response)
+        {
+            // Example parsing logic for `<Idle|MPos:0.000,0.000,0.000|FS:0,0>`
+            var status = new GrblStatus();
+            // Parse status, machine position, feed rates, etc.
+            return status;
+        }
+
 
         private void OnDataReceived(object sender, SerialDataReceivedEventArgs e)
         {
